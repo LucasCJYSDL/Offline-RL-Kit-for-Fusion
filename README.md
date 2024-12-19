@@ -6,5 +6,5 @@
 
 - You can run the program simply by:
     ```bash
-    python run_XXX.py
+    python examples/run_XXX.py
     ```
