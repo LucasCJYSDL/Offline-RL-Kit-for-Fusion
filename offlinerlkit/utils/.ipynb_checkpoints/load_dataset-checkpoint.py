@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import collections
 from dynamics_toolbox.utils.storage.qdata import load_from_hdf5
+from gym import spaces
 
 #data_path = "/home/scratch/avenugo2/FusionControl/data/preprocessed/wshapecontrol"
 data_path = "/home/scratch/avenugo2/FusionControl/data/preprocessed/noshape_ech"
@@ -29,8 +30,8 @@ def fusion_dataset(use_time = False):
     dataset['next_observations'] = raw_dataset['states'] + raw_dataset['next_states']
     dataset['actions'] = raw_dataset['actuators'] + raw_dataset['next_actuators']
     dataset['terminals'] = dones
-    dataset['rewards'] = np.ones_like(dones)
-    #dataset['sidx'] = raw_dataset['shotnum']
+    dataset['rewards'] = np.zeros_like(dones)#reward should be distance between target DR and current DR.
+    dataset['shot_number'] = raw_dataset['shotnum']
     dataset['time'] = raw_dataset['time'].astype(int)
     if use_time:
         time = (dataset['time'] - min(dataset['time']))/(max(dataset['time']) - min(dataset['time']))
@@ -118,7 +119,33 @@ def qlearning_dataset(env, dataset=None, terminate_on_end=False, **kwargs):
         'terminals': np.array(done_),
     }
 
+class FusionEnv():
+    def __init__(self, dataset):
+        self.dataset = dataset
+        self.model = None
+        self.observation_shape = dataset['observations'].shape[-1]
+        as_low = np.min(dataset['actions'], axis=0)
+        as_high = np.max(dataset['actions'], axis=0)
+        self.action_space = spaces.Box(low= as_low, high=as_high, dtype=np.float32)
 
+    def reset(num_episodes):
+        batch_indexes = np.random.randint(0, len(self.dataset.observations), size=num_episodes)
+        return self.dataset.actions[batch_indexes], self.dataset.observations[batch_indexes]
+
+    def step(obs, act, target):
+
+        if model is not None:
+            pred_next_obs = model.predict(torch.cat([obs, act], dim = -1))
+
+        pred_dr = pred_next_obs[:, 19:23]
+        reward = torch.abs(target - pred_dr).mean()
+        
+        return pred_next_obs, reward        
+
+    #def get_normalized_score
+
+    #def get_reward
+    
 class SequenceDataset(torch.utils.data.Dataset):
     def __init__(self, dataset, max_len, max_ep_len=1000, device="cpu"):
         super().__init__()

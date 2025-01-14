@@ -1,28 +1,28 @@
 import argparse
 import random
-
 import gym
 import d4rl
-
 import numpy as np
 import torch
-
 import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian
-from offlinerlkit.utils.load_dataset import qlearning_dataset, fusion_dataset
+from offlinerlkit.utils.load_dataset import qlearning_dataset, fusion_dataset, FusionEnv
 from offlinerlkit.buffer import ReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import CQLPolicy
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+model_path = os.path.join("./models_ope", "walker_walk", "walker_walk_0_relu_0.0001_8_0.05_s_3_mc_nm", "behavior_ckpt100.pth")
+
 """
 suggested hypers
 cql-weight=5.0, temperature=1.0 for all D4RL-Gym tasks
 """
-
+def str_to_float_list(input_string):
+    return [float(item) for item in input_string.split(',')]
+    
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -31,6 +31,7 @@ def get_args():
     parser.add_argument("--task", type=str, default="hopper-medium-v2")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256, 256])
+    parser.add_argument("--target_rotation", type=str_to_float_list, help='Target Differential Rotation', default=['0', '1'])
     parser.add_argument("--actor-lr", type=float, default=1e-4)
     parser.add_argument("--critic-lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -39,7 +40,7 @@ def get_args():
     parser.add_argument("--target-entropy", type=int, default=None)
     parser.add_argument("--auto-alpha", default=True)
     parser.add_argument("--alpha-lr", type=float, default=1e-4)
-
+    parser.add_argument("--seq-len", type=float, default=5)
     parser.add_argument("--cql-weight", type=float, default=5.0)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--max-q-backup", type=bool, default=False)
@@ -60,20 +61,27 @@ def get_args():
 
 def train(args=get_args()):
     # create env and dataset
-    env = gym.make(args.task)
-    if args.fusion_expt:
+    
+    if args.fusion_expt: 
         dataset = fusion_dataset()
+        env = FusionEnv(dataset)
+        args.obs_shape = (env.observation_shape,)
+        args.action_dim = np.prod(env.action_space.shape)
+        args.max_action = max(env.action_space.high)
     else:
+        env = gym.make(args.task)
         dataset = qlearning_dataset(env)
-    #for k, v in dataset.items():
-    #    print(k, v.shape)
-    #print(hello)
+        args.obs_shape = env.observation_space.shape
+        args.action_dim = np.prod(env.action_space.shape)
+        args.max_action = env.action_space.high[0]
+        env.seed(args.seed)
+
+    print(args.obs_shape, args.action_dim, args.max_action, env.action_space)
+
+
     # See https://github.com/aviralkumar2907/CQL/blob/master/d4rl/examples/cql_antmaze_new.py#L22
-    if 'antmaze' in args.task:
+    if 'antmaze' in args.task and not args.fusion_expt:
         dataset["rewards"] = (dataset["rewards"] - 0.5) * 4.0
-    args.obs_shape = env.observation_space.shape
-    args.action_dim = np.prod(env.action_space.shape)
-    args.max_action = env.action_space.high[0]
 
     # seed
     random.seed(args.seed)
@@ -81,7 +89,7 @@ def train(args=get_args()):
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     torch.backends.cudnn.deterministic = True
-    env.seed(args.seed)
+
 
     # create policy model
     actor_backbone = MLP(input_dim=np.prod(args.obs_shape), hidden_dims=args.hidden_dims)
@@ -92,7 +100,7 @@ def train(args=get_args()):
         output_dim=args.action_dim,
         unbounded=True,
         conditioned_sigma=True,
-        max_mu=args.max_action
+        max_mu=args.max_action #this might become an issue for fusion dataset, debug later.
     )
     actor = ActorProb(actor_backbone, dist, args.device)
     critic1 = Critic(critic1_backbone, args.device)
@@ -100,6 +108,13 @@ def train(args=get_args()):
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args.actor_lr)
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
+
+    ################ LOAD MODEL ######################
+    model = None
+    if args.fusion_expt:   
+        #model.load_state_dict(torch.load(model_path, weights_only=True, map_location=args.device))
+
+    ###################################################
 
     if args.auto_alpha:
         target_entropy = args.target_entropy if args.target_entropy \
@@ -132,9 +147,12 @@ def train(args=get_args()):
         with_lagrange=args.with_lagrange,
         lagrange_threshold=args.lagrange_threshold,
         cql_alpha_lr=args.cql_alpha_lr,
-        num_repeart_actions=args.num_repeat_actions
+        num_repeart_actions=args.num_repeat_actions,
+        fusion=args.fusion_expt,
+        target_dr=args.target_rotation if args.fusion_expt else None,
+        model = model
     )
-
+    
     # create buffer
     buffer = ReplayBuffer(
         buffer_size=len(dataset["observations"]),
@@ -142,10 +160,14 @@ def train(args=get_args()):
         obs_dtype=np.float32,
         action_dim=args.action_dim,
         action_dtype=np.float32,
-        device=args.device
+        device=args.device,
+        seq_length = args.seq_len
     )
     buffer.load_dataset(dataset)
-
+    
+    env.dataset = buffer
+    
+    env.model = model
     # log
     log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
     # key: output file name, value: output handler type
