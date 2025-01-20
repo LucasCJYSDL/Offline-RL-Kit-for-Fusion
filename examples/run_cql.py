@@ -5,6 +5,7 @@ import d4rl
 import numpy as np
 import torch
 import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian
 from offlinerlkit.utils.load_dataset import qlearning_dataset, fusion_dataset, FusionEnv
@@ -13,7 +14,6 @@ from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import CQLPolicy
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 model_path = os.path.join("./models_ope", "walker_walk", "walker_walk_0_relu_0.0001_8_0.05_s_3_mc_nm", "behavior_ckpt100.pth")
 
 """
@@ -31,7 +31,7 @@ def get_args():
     parser.add_argument("--task", type=str, default="hopper-medium-v2")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256, 256])
-    parser.add_argument("--target_rotation", type=str_to_float_list, help='Target Differential Rotation', default=['0', '1'])
+    parser.add_argument("--target_rotation", type=str_to_float_list, help='Target Differential Rotation', default=['1', '1', '1', '1'])
     parser.add_argument("--actor-lr", type=float, default=1e-4)
     parser.add_argument("--critic-lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -51,6 +51,7 @@ def get_args():
     parser.add_argument("--num-repeat-actions", type=int, default=10)
     
     parser.add_argument("--epoch", type=int, default=1000)
+    parser.add_argument("--model-free", action="store_true",  help="use model-free RL algorithm") 
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=256)
@@ -61,7 +62,7 @@ def get_args():
 
 def train(args=get_args()):
     # create env and dataset
-    
+    args.target_rotation = torch.from_numpy(np.array(args.target_rotation).astype(float)).to(args.device)
     if args.fusion_expt: 
         dataset = fusion_dataset()
         env = FusionEnv(dataset)
@@ -111,8 +112,9 @@ def train(args=get_args()):
 
     ################ LOAD MODEL ######################
     model = None
-    if args.fusion_expt:   
-        #model.load_state_dict(torch.load(model_path, weights_only=True, map_location=args.device))
+    
+    if not args.model_free and args.fusion_expt: 
+        model.load_state_dict(torch.load(model_path, weights_only=True, map_location=args.device))
 
     ###################################################
 
@@ -149,10 +151,14 @@ def train(args=get_args()):
         cql_alpha_lr=args.cql_alpha_lr,
         num_repeart_actions=args.num_repeat_actions,
         fusion=args.fusion_expt,
+        model_free=args.model_free,
         target_dr=args.target_rotation if args.fusion_expt else None,
         model = model
     )
-    
+
+    ############################# DONE TILL HERE ##################################
+
+    seq_length = args.seq_len if not args.model_free else 1
     # create buffer
     buffer = ReplayBuffer(
         buffer_size=len(dataset["observations"]),
@@ -161,7 +167,7 @@ def train(args=get_args()):
         action_dim=args.action_dim,
         action_dtype=np.float32,
         device=args.device,
-        seq_length = args.seq_len
+        seq_len = seq_length
     )
     buffer.load_dataset(dataset)
     

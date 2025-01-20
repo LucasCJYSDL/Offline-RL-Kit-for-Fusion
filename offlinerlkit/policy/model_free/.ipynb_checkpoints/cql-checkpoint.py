@@ -34,6 +34,7 @@ class CQLPolicy(SACPolicy):
         cql_alpha_lr: float = 1e-4,
         num_repeart_actions:int = 10,
         fusion:bool = False,
+        model_free:bool=False,
         target_dr = None,
         model = None
     ) -> None:
@@ -62,6 +63,7 @@ class CQLPolicy(SACPolicy):
 
         self._num_repeat_actions = num_repeart_actions
         self.fusion = fusion
+        self.model_free = model_free
         self.target_dr = target_dr
         self.model = model
 
@@ -92,13 +94,11 @@ class CQLPolicy(SACPolicy):
 
     def learn(self, batch: Dict) -> Dict[str, float]:
 
-        if self.fusion:
-            obss, actions, next_obss, rewards, terminals = batch["observations"][:, -1], batch["actions"][:, -1], 
-                batch["next_observations"][:, -1], batch["rewards"][:, -1], batch["terminals"][:, -1]
+        if self.fusion and self.model is not None:
+            obss, actions, next_obss, rewards, terminals = batch["observations"][:, -1], batch["actions"][:, -1], batch["next_observations"][:, -1], batch["rewards"][:, -1], batch["terminals"][:, -1]
             obs_seq, act_seq =  batch["observations"].clone(), batch["actions"].clone()
         else:
-            obss, actions, next_obss, rewards, terminals = batch["observations"], batch["actions"], \
-                batch["next_observations"], batch["rewards"], batch["terminals"]
+            obss, actions, next_obss, rewards, terminals = batch["observations"], batch["actions"], batch["next_observations"], batch["rewards"], batch["terminals"]
         batch_size = obss.shape[0]
         
         # update actor
@@ -117,11 +117,19 @@ class CQLPolicy(SACPolicy):
             self.alpha_optim.step()
             self._alpha = self._log_alpha.detach().exp()
         
+
+        ########################### REWARD COMPUTATION FOR FUSION ##################################
+        if self.fusion:
+            if self.model is not None:
+                act_seq[:, -1] = a
+                next_obs, rewards = self.get_nextobs_rewards(self.model, obs_seq, self.target_dr, act_seq)        
+            else:
+                current_dr = obss[:, 19:23]
+                rewards = torch.abs(self.target_dr - current_dr).mean(dim = -1, keepdim  = True)
+
         
-        if self.fusion and self.model is not None:
-            act_seq[:, -1] = a
-            next_obs, rewards = self.get_nextobs_rewards(self.model, obs_seq, self.target_dr, act_seq)            
-        
+        #############################################################################################
+                
         # compute td error
         if self._max_q_backup:
             with torch.no_grad():

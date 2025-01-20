@@ -64,10 +64,12 @@ class MFPolicyTrainer:
                 self.lr_scheduler.step()
             
             # evaluate current policy: todo
+            '''
             if self.policy.fusion:
                 eval_info = self._evaluate_fusion()
             else:
-                eval_info = self._evaluate()
+                eval_info = self._evaluate() '''
+            
             ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(eval_info["eval/episode_reward"])
             ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(eval_info["eval/episode_length"])
             norm_ep_rew_mean = self.eval_env.get_normalized_score(ep_reward_mean) * 100
@@ -79,7 +81,7 @@ class MFPolicyTrainer:
             self.logger.logkv("eval/episode_length_std", ep_length_std)
             self.logger.set_timestep(num_timesteps)
             self.logger.dumpkvs()
-        
+
             # save checkpoint
             torch.save(self.policy.state_dict(), os.path.join(self.logger.checkpoint_dir, "policy.pth"))
 
