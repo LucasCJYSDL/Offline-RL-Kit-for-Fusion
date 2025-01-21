@@ -66,7 +66,31 @@ class CQLPolicy(SACPolicy):
         self.model_free = model_free
         self.target_dr = target_dr
         self.model = model
+        self.args = args
 
+
+
+    def get_dr(self, q_profile, rot_profile):
+
+        mask1 = q_profile > 1
+        mask2 = q_profile > 2
+
+        idx1 = mask1.argmax(axis=1)
+        idx2 = mask2.argmax(axis=1)
+
+        idx1[~mask1.any(axis=1)] = -1
+        idx2[~mask2.any(axis=1)] = -1
+
+        mask1 = idx1 != -1
+        rot1 = rot_profile[mask1, idx1[mask1]]
+
+        mask2 = idx2 != -1
+        rot2 = rot_profile[mask2, idx2[mask2]]
+
+        dr = rot1 - rot2
+        return dr 
+
+    
     def calc_pi_values(
         self,
         obs_pi: torch.Tensor,
@@ -94,8 +118,8 @@ class CQLPolicy(SACPolicy):
 
     def learn(self, batch: Dict) -> Dict[str, float]:
 
-        if self.fusion and self.model is not None:
-            obss, actions, next_obss, rewards, terminals = batch["observations"][:, -1], batch["actions"][:, -1], batch["next_observations"][:, -1], batch["rewards"][:, -1], batch["terminals"][:, -1]
+        if self.fusion:
+            obss, actions, next_obss, rewards, terminals, time = batch["observations"][:, -1], batch["actions"][:, -1], batch["next_observations"][:, -1], batch["rewards"][:, -1], batch["terminals"][:, -1], batch["time"][:, -1]
             obs_seq, act_seq =  batch["observations"].clone(), batch["actions"].clone()
         else:
             obss, actions, next_obss, rewards, terminals = batch["observations"], batch["actions"], batch["next_observations"], batch["rewards"], batch["terminals"]
@@ -122,12 +146,20 @@ class CQLPolicy(SACPolicy):
         if self.fusion:
             if self.model is not None:
                 act_seq[:, -1] = a
-                next_obs, rewards = self.get_nextobs_rewards(self.model, obs_seq, self.target_dr, act_seq)        
+                next_obs, rewards = self.get_nextobs_rewards(self.model, obs_seq, self.target_dr, self.args.target_type, act_seq, time) #todo       
             else:
-                current_dr = obss[:, 19:23]
-                rewards = torch.abs(self.target_dr - current_dr).mean(dim = -1, keepdim  = True)
+                current_q = obss[:, self.args.q_idxes]
+                current_rot = obss[:, self.args.rot_idxes]
+                if self.args.target_type == "scalar":
+                    current_dr = self.get_dr(current_q, current_rot)
+                else:
+                    current_dr = current_rot
 
-        
+                current_target = time < 500
+                current_target[current_target > 0] = self.target_dr[0]
+                current_target[current_target == 0] = self.target_dr[1]
+                rewards = torch.abs(torch.from_numpy(current_target) - current_dr).mean(dim = -1, keepdim  = True)
+
         #############################################################################################
                 
         # compute td error

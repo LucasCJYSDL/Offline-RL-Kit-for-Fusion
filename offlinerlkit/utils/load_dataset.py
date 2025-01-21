@@ -3,14 +3,74 @@ import torch
 import collections
 from dynamics_toolbox.utils.storage.qdata import load_from_hdf5
 from gym import spaces
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 #data_path = "/home/scratch/avenugo2/FusionControl/data/preprocessed/wshapecontrol"
 data_path = "/home/scratch/avenugo2/FusionControl/data/preprocessed/noshape_ech"
 req_shots_path = "/home/scratch/avenugo2/FusionControl/data/tm_shots.txt"
 tm_labels_path = "/home/scratch/avenugo2/FusionControl/data/tm_labels"
 
+def max_pooling(arr, target_size):
 
-def fusion_dataset(use_time = False):
+    target_size = arr.shape[1] / pool_size
+    remainder = arr.shape[1] % pool_size
+    
+    pooled1 = arr[:, :-remainder].reshape(arr.shape[0], target_size, -1)
+    result1 = np.max(pooled1, axis=2)
+
+    pooled2 = arr[:, -remainder:]
+    result2 = np.max(pooled2, axis = 2)
+    
+    # Combine the results
+    return np.column_stack((result1, result2))
+
+def pca(arr, num_components=4):
+
+    scaler = StandardScaler()
+    arr_scaled = scaler.fit_transform(arr)
+    pca = PCA(n_components=num_components)
+    arr_pca = pca.fit_transform(arr_scaled)
+    return arr_pca, pca.explained_variance_ratio_
+
+
+def set_target(target_type, q_profile, rot_profile): #currently setting as mean
+
+    if target_type == "scalar":
+        mask1 = q_profile > 1
+        mask2 = q_profile > 2
+
+        idx1 = mask1.argmax(axis=1)
+        idx2 = mask2.argmax(axis=1)
+
+        idx1[~mask1.any(axis=1)] = -1
+        idx2[~mask2.any(axis=1)] = -1
+
+        mask1 = idx1 != -1
+        rot1 = rot_profile[mask1, idx1[mask1]]
+
+        mask2 = idx2 != -1
+        rot2 = rot_profile[mask2, idx2[mask2]]
+
+        dr = rot1 - rot2
+        target1 = dr.mean(axis = 0)
+        target2 = target1 + dr.std(axis = 0)
+
+    elif target_type == "downsample":
+        ds_rot_profile =  max_pooling(rot_profile, args.downsample_size)
+        target1 = ds_rot_profile.mean(axis = 0)
+        target2 = target1 + ds_rot_profile.std(axis = 0)
+
+    elif target_type == "pca":
+        pca_rot_profile = pca(rot_profile) #currently set to 4 components
+        target1 = pca_rot_profile.mean(axis = 0)
+        target2 = target1 + pca_rot_profile.std(axis = 0)
+    
+   return [target1, target2]
+    
+
+    
+def fusion_dataset(args, use_time = False):
     raw_dataset = load_from_hdf5(f"{data_path}/full.hdf5")
     #print(raw_dataset.keys())
     #for key, val in raw_dataset.items():
@@ -24,11 +84,91 @@ def fusion_dataset(use_time = False):
             dones.append(False)
     dones.append(True)
     dones = np.array(dones)
-    
+
+    with open(f'{data_path}/info.pkl', 'rb') as f:
+        metadata = pickle.load(f)
+
     dataset = {}
-    dataset['observations'] = raw_dataset['states']
-    dataset['next_observations'] = raw_dataset['states'] + raw_dataset['next_states']
-    dataset['actions'] = raw_dataset['actuators'] + raw_dataset['next_actuators']
+
+    state_vars = {}
+    for i, key in enumerate(metadata['state_space']):
+        state_vars[key] = i 
+    if args.profile == "default":
+        dataset['observations'] = raw_dataset['states']
+        dataset['next_observations'] = raw_dataset['states'] + raw_dataset['next_states']
+    else:
+        observations = {}
+        rot_profile, q_profile, ech, eccd = [], [], [], []
+        
+        #SETTING TARGET
+        args.target_rotation = set_target(args.target_type, rot_profile, q_profile)
+        
+        for key, val in state_vars.items():
+            if 'rotation' in key:
+                rot_profile.append(raw_dataset['states'][val])
+            elif 'q_profile' in key:
+                q_profile.append(raw_dataset['states'][val])
+            elif 'ech' in key:
+                ech.append(raw_dataset['states'][val])
+            elif 'eccd' in key:
+                eccd.append(raw_dataset['states'][val])
+            else:
+                observations[key] = raw_dataset['states'][val]
+
+        if args.profile == 'downsample':
+            observations['rotation_profile'] = max_pooling(rot_profile, args.downsample_size)
+            observations['q_profile'] = max_pooling(q_profile, args.downsample_size)
+            if args.ec_type == "profile":
+                observations['ech_profile'] = max_pooling(ech, args.downsample_size)
+                observations['eccd_profile'] = max_pooling(eccd, args.downsample_size)
+            else:
+                observations['ech_profile'] = ech
+                observations['eccd_profile'] = eccd               
+        elif args.profile == 'pca':
+            print("Performing PCA on rotation profile...")
+            observations['rotation_profile'], ev = pca(rot_profile)
+            print("Rotation profile explained variance:", ev)
+
+            print("Performing PCA on q profile...")
+            observations['q_profile'], ev = pca(q_profile)
+            print("Rotation profile explained variance:", ev)
+
+            if args.ec_type == "profile":
+                print("Performing PCA on ech profile...")
+                observations['ech_profile'], ev = pca(ech)
+                print("Rotation profile explained variance:", ev)
+    
+                print("Performing PCA on eccd profile...")
+                observations['eccd_profile'], ev = pca(eccd)
+                print("Rotation profile explained variance:", ev)
+            else:
+                observations['ech_profile'] = ech
+                observations['eccd_profile'] = eccd   
+
+        observations['dr_target'] = np.repeat(np.concatenate(args.target_rotation, axis = -1), observations['rot_profile'].shape[0], axis = 0)
+
+        #todo: get rotation profile and q profile indices
+        count = 0
+        for key, val in observations.items():
+
+            if key == 'rotation_profile':
+                args.rot_idxes = np.arange(count, count + observations[key].shape[-1])
+            elif key == 'q_profile':
+                args.q_idxes = np.arange(count, count + observations[key].shape[-1])  
+                
+            count += observations[key].shape[-1]
+            
+        dataset['observations'] = np.concatenate(observations.values().tolist(), axis = 1)
+
+
+    req_actuators = set(args.actuators)
+    actuators = metadata['actuator_space']
+    actuator_idxes = [actuators.index[item] for item in req_actuators]
+    dataset['actions'] = raw_dataset['actuators'][:, actuator_idxes] + raw_dataset['next_actuators'][:, actuator_idxes]
+    
+
+    ##############################################################################3
+    
     dataset['terminals'] = dones
     dataset['rewards'] = np.zeros_like(dones)#reward should be distance between target DR and current DR.
     dataset['shot_number'] = raw_dataset['shotnum']
@@ -37,6 +177,7 @@ def fusion_dataset(use_time = False):
         time = (dataset['time'] - min(dataset['time']))/(max(dataset['time']) - min(dataset['time']))
         dataset['s'] = np.concatenate([dataset['s'], time[:, None]], axis = -1)
     print("Fusion dataset created.")
+    
     return dataset
     
 def qlearning_dataset(env, dataset=None, terminate_on_end=False, **kwargs):

@@ -15,7 +15,6 @@ from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import CQLPolicy
 
 model_path = os.path.join("./models_ope", "walker_walk", "walker_walk_0_relu_0.0001_8_0.05_s_3_mc_nm", "behavior_ckpt100.pth")
-
 """
 suggested hypers
 cql-weight=5.0, temperature=1.0 for all D4RL-Gym tasks
@@ -32,6 +31,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256, 256])
     parser.add_argument("--target_rotation", type=str_to_float_list, help='Target Differential Rotation', default=['1', '1', '1', '1'])
+    parser.add_argument("--target_type", type=str, default="scalar")
     parser.add_argument("--actor-lr", type=float, default=1e-4)
     parser.add_argument("--critic-lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -49,22 +49,27 @@ def get_args():
     parser.add_argument("--lagrange-threshold", type=float, default=10.0)
     parser.add_argument("--cql-alpha-lr", type=float, default=3e-4)
     parser.add_argument("--num-repeat-actions", type=int, default=10)
-    
+    parser.add_argument("--actuators", type=str_to_float_list, help='Actuators to control', default=['pinj', 'tinj', 'GasA'])
     parser.add_argument("--epoch", type=int, default=1000)
     parser.add_argument("--model-free", action="store_true",  help="use model-free RL algorithm") 
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--profile", type=str, default="default")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
-
+    parser.add_argument("--downsample_size", type=int, default=5)
+    parser.add_argument("--ec_type", type=str, default="profile")
     return parser.parse_args()
 
 
 def train(args=get_args()):
     # create env and dataset
-    args.target_rotation = torch.from_numpy(np.array(args.target_rotation).astype(float)).to(args.device)
+    if args.target_type == "profile":
+        args.target_rotation = [np.array(args.target_rotation).astype(float)] * 2
+    else:
+        args.target_rotation = [0, 0]
     if args.fusion_expt: 
-        dataset = fusion_dataset()
+        dataset = fusion_dataset(args) #this step currently also sets the target (profile/scalar)
         env = FusionEnv(dataset)
         args.obs_shape = (env.observation_shape,)
         args.action_dim = np.prod(env.action_space.shape)
@@ -153,7 +158,8 @@ def train(args=get_args()):
         fusion=args.fusion_expt,
         model_free=args.model_free,
         target_dr=args.target_rotation if args.fusion_expt else None,
-        model = model
+        model = model,
+        args = args
     )
 
     ############################# DONE TILL HERE ##################################
