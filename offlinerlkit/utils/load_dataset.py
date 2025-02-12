@@ -66,10 +66,9 @@ def set_target(target_type, q_profile, rot_profile): #currently setting as mean
         target1 = pca_rot_profile.mean(axis = 0)
         target2 = target1 + pca_rot_profile.std(axis = 0)
     
-   return [target1, target2]
+    return [target1, target2]
     
-
-    
+   
 def fusion_dataset(args, use_time = False):
     raw_dataset = load_from_hdf5(f"{data_path}/full.hdf5")
     #print(raw_dataset.keys())
@@ -261,27 +260,50 @@ def qlearning_dataset(env, dataset=None, terminate_on_end=False, **kwargs):
     }
 
 class FusionEnv():
-    def __init__(self, dataset):
+    def __init__(self, dataset, dynamics_model):
         self.dataset = dataset
         self.model = None
+        self.dynamics_model = dynamics_model
         self.observation_shape = dataset['observations'].shape[-1]
         as_low = np.min(dataset['actions'], axis=0)
         as_high = np.max(dataset['actions'], axis=0)
         self.action_space = spaces.Box(low= as_low, high=as_high, dtype=np.float32)
+        self.cur_time = 0
+        self.reward = 0
+        self.rewards = None
+        # self.states_subset = np.zeros(self.observation_shape) # change to env.yaml stuff later
+        # self.states_subset[0] = 1
 
-    def reset(num_episodes):
-        batch_indexes = np.random.randint(0, len(self.dataset.observations), size=num_episodes)
-        return self.dataset.actions[batch_indexes], self.dataset.observations[batch_indexes]
+    def reset(self, num_episodes):
+        self.rewards = np.zeros(num_episodes)
+        # assume start from beginning
+        idx = 0
+        return self.dataset['actions'][idx], self.dataset['observations'][idx]
+        # batch_indexes = np.random.randint(0, len(self.dataset.observations), size=num_episodes)
+        # return self.dataset.actions[batch_indexes], self.dataset.observations[batch_indexes]
 
-    def step(obs, act, target):
+    def step(self, obs, act, target):
 
-        if model is not None:
-            pred_next_obs = model.predict(torch.cat([obs, act], dim = -1))
-
-        pred_dr = pred_next_obs[:, 19:23]
-        reward = torch.abs(target - pred_dr).mean()
+        # if model is not None:
+        #     pred_next_obs = model.predict(torch.cat([obs, act], dim = -1))\
+         # pred_dr = pred_next_obs[:, 19:23]
+        # reward = torch.abs(target - pred_dr).mean()
         
-        return pred_next_obs, reward        
+        # dynamics model prediction
+        # based on FusionControl repo:
+        # model_out, _ = self.dynamics_model.predict(
+        #             np.hstack([obs, act, next_act])) 
+        # based on dummy model
+        model_out = self.dynamics_model.predict(np.hstack([obs, act]))
+
+        delta_state = np.abs(model_out.detach().numpy() - obs) # find difference in subset of state
+        next_state = obs + delta_state
+
+        gamma = np.linalg.norm(np.abs(next_state - target)) # using l2 norm for now, can design in the future
+        self.reward += gamma
+        self.cur_time += 1
+        
+        return next_state, self.reward        
 
     #def get_normalized_score
 

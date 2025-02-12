@@ -36,7 +36,8 @@ class CQLPolicy(SACPolicy):
         fusion:bool = False,
         model_free:bool=False,
         target_dr = None,
-        model = None
+        model = None,
+        args=None
     ) -> None:
         super().__init__(
             actor,
