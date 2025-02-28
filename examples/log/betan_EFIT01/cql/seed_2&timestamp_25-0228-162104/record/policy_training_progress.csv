@@ -1,0 +1,2 @@
+alpha,eval/episode_length,eval/episode_length_std,eval/normalized_episode_reward,eval/normalized_episode_reward_std,loss/actor,loss/alpha,loss/critic1,loss/critic2,timestep
+0.9620424010753619,225.2,2.993325909419153,-874.4898502198702,6.550686885282307,18.811315019223862,-0.34810717618186005,-8.970882072687152,-6.491271860599513,1000

@@ -33,7 +33,7 @@ class DummyPolicyNet(nn.Module):
         x = self.linear(x)
         return x
 
-def get_raw_data(offline_data_dir, tracking_target, reference_shot, action_bound_path, save_file): # TODO: load the raw dataset
+def get_raw_data(offline_data_dir, tracking_target, reference_shot, action_bound_path, save_file): 
     offline_data = {}
     # get main components
     with h5py.File(offline_data_dir + 'full.hdf5', 'r') as hdf:
@@ -70,9 +70,11 @@ def get_raw_data(offline_data_dir, tracking_target, reference_shot, action_bound
     
     offline_data['observations'] = offline_data['observations'][mask]
     offline_data['pre_actions'] = offline_data['pre_actions'][mask]
+    offline_data['actions'] = offline_data['pre_actions']
     offline_data['action_deltas'] = offline_data['action_deltas'][mask]
     # offline_data['next_observations'] = offline_data['next_observations'][mask]
     offline_data['shotnum'] = offline_data['shotnum'][mask]
+    print(offline_data['shotnum'][:100])
     tot_num = offline_data['shotnum'].shape[0]
     # print(tot_num, offline_data['observations'][1001:1031] - offline_data['next_observations'][1000:1030]) # 3108605
 
@@ -87,7 +89,7 @@ def get_raw_data(offline_data_dir, tracking_target, reference_shot, action_bound
             offline_data['index_list'].append(i)
     
     # get the action bounds
-    with open(action_bound_path, 'r') as file: # TODO: change this path
+    with open(action_bound_path, 'r') as file: 
         data_dict = yaml.safe_load(file)
     
     offline_data['action_lower_bounds'], offline_data['action_upper_bounds'] = [], []
@@ -110,14 +112,16 @@ def get_raw_data(offline_data_dir, tracking_target, reference_shot, action_bound
     found = False
     for i in range(tot_num):
         if int(offline_data['shotnum'][i]) == reference_shot:
-            found = True
             offline_data['tracking_ref'].append(offline_data['observations'][i][offline_data['index_list']])
+            found = True
+            
             offline_data['tracking_states'].append(offline_data['observations'][i])
             offline_data['tracking_actions'].append(offline_data['pre_actions'][i])
         else:
             if found:
                 break
     offline_data['tracking_ref'] = np.array(offline_data['tracking_ref'])
+    print(offline_data['tracking_ref'].shape)
     offline_data['tracking_states'] = np.array(offline_data['tracking_states'])
     offline_data['tracking_actions'] = np.array(offline_data['tracking_actions'])
 
@@ -140,6 +144,7 @@ def get_raw_data(offline_data_dir, tracking_target, reference_shot, action_bound
     offline_data['terminals'] = []
     ts = 0
     for i in tqdm(range(tot_num-1)):
+        #if offline_data['shotnum'][i] == reference_shot: # TODO: double check if this makes sense from data side
         offline_data['time_step'].append(ts)
         if offline_data['shotnum'][i+1] != offline_data['shotnum'][i]:
             offline_data['terminals'].append(True)
@@ -150,10 +155,12 @@ def get_raw_data(offline_data_dir, tracking_target, reference_shot, action_bound
     offline_data['time_step'].append(ts)
     offline_data['terminals'].append(True) # a litlle bit buggy
     offline_data['time_step'] = np.array(offline_data['time_step'])
+    # print( offline_data['time_step'].shape, offline_data['next_observations'].shape, len(mask))
+    # assert offline_data['time_step'].shape == offline_data['next_observations'].shape
     offline_data['terminals'] = np.array(offline_data['terminals'])
     # shape: (3793282,) (3793282,)
 
-    with h5py.File(save_file, 'w') as hdf: # TODO: change the path
+    with h5py.File(save_file, 'w') as hdf:
         for key, value in offline_data.items():
             hdf.create_dataset(key, data=value)
 
@@ -163,10 +170,10 @@ def evaluate(policy, env):
     T = 10
 
     episode_return = 0
-    s_t = env.reset() # TODO: get the initial state
+    s_t = env.reset()
     for t in range(T):
         a_t = policy.forward(s_t)
-        s_t1, reward, done, _ = env.step(a_t) # TODO: get the next state, current reward, and if the episode ends
+        s_t1, reward, done, _ = env.step(a_t) 
         episode_return += reward
 
     return episode_return
@@ -180,9 +187,9 @@ if __name__ == "__main__":
     data_path = "/zfsauton2/home/linmo/Offline-RL-Kit/data/nf_data.h5"    
     model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar"
 
-    if os.path.exists(data_path):
+    if False:#os.path.exists(data_path):
         print("data path exists, reading from processed data")
-        offline_data = get_offline_data(data_path, tracking_target) # TODO: figure out if it's necessary to have both get_raw_data and get_offline data
+        offline_data = get_offline_data(data_path, tracking_target) 
     else:
         print("data path doesn't exist, processing raw data")
         offline_data = get_raw_data(offline_data_dir, tracking_target, reference_shot, action_bound_path, data_path) # load the raw data and convert it to nf_data.h5
@@ -192,7 +199,7 @@ if __name__ == "__main__":
                                 time_limit=offline_data['tracking_ref'].shape[0], device=device)
     env = NFEnv(model_dir, device, offline_data['tracking_ref'], offline_data['tracking_states'], offline_data['tracking_actions'], offline_data['index_list'], sa_processor)
     env.seed(seed=0)
-    policy = DummyPolicyNet(offline_data['obs_dim'], offline_data['act_dim']) # TODO: takes state as input and output an action
+    policy = DummyPolicyNet(offline_data['obs_dim'], offline_data['act_dim']) 
     
     # single pass through to make sure params are initiated
     dummy_input = torch.cat([torch.Tensor(offline_data['observations'][0]).to(device), torch.Tensor([1]).to(device)])

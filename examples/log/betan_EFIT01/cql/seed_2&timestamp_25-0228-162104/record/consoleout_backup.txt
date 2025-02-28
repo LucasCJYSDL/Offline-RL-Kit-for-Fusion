@@ -1,0 +1,12 @@
+----------------------------------------------------------------------------------
+| alpha                              | 0.962    |
+| eval/episode_length                | 225      |
+| eval/episode_length_std            | 2.99     |
+| eval/normalized_episode_reward     | -874     |
+| eval/normalized_episode_reward_std | 6.55     |
+| loss/actor                         | 18.8     |
+| loss/alpha                         | -0.348   |
+| loss/critic1                       | -8.97    |
+| loss/critic2                       | -6.49    |
+| timestep                           | 1000     |
+----------------------------------------------------------------------------------
