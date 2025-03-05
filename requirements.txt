@@ -1,0 +1,14 @@
+numpy==1.26.4
+scikit-learn==1.2.2
+gym==0.23.1
+-e git+https://github.com/IanChar/dynamics-toolbox.git@9fd36a3847a6afa509aa8e6202355076636dca47#egg=dynamics_toolbox
+h5py==3.10.0
+tensorboard==2.16.2
+tqdm==4.67.1
+mujoco==3.2.7
+mujoco-py==2.1.2.14
+Cython==0.29.37
+patchelf==0.17.2.1
+hydra-core==1.1.1
+torchmetrics==1.6.1
+pytorch-lightning==1.8.4
