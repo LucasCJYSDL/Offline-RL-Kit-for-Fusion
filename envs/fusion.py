@@ -3,6 +3,11 @@ import numpy as np
 import pickle
 import h5py
 import random
+import yaml
+from collections import defaultdict
+import pickle
+import h5py
+from tqdm import tqdm
 
 from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
 
@@ -30,13 +35,192 @@ class SA_processor:
         act_num = action.shape[0]
         return (action - self.mid.repeat(act_num, 1).cpu().numpy()) / (self.range.repeat(act_num, 1).cpu().numpy()+1e-6)
 
+def state_names_to_idxs(data_path, states_in_obs):
+    with open(f'{data_path}/info.pkl', 'rb') as f:
+        info = pickle.load(f)
+        all_states = info['state_space']
+        idxs = []
+        for s in states_in_obs:
+            idxs.append(all_states.index(s))
+    return idxs
+
+def actuator_names_to_idxs(data_path, acts_in_obs):
+    with open(f'{data_path}/info.pkl', 'rb') as f:
+        info = pickle.load(f)
+        all_acts = info['actuator_space']
+        idxs = []
+        for s in acts_in_obs:
+            idxs.append(all_acts.index(s))
+    return idxs
+
+def get_raw_data(offline_data_dir, tracking_target, reference_shot, action_bound_path, save_file, states_in_obs=None, acts_in_obs=None): 
+    offline_data = {}
+    # get main components
+    with h5py.File(offline_data_dir + 'full.hdf5', 'r') as hdf:
+        # print("Keys in the file:", list(hdf.keys()))
+        full_observations = hdf['states'][:]
+        # this sum is because 'next_actuators' are a_t - a_{t-1} for 'actuators' and 'actuators' are a_{t-1}
+        offline_data['pre_actions'] = hdf['actuators'][:]
+        offline_data['action_deltas'] = hdf['next_actuators'][:]
+        full_next_observations = hdf['states'][:] + hdf['next_states'][:]
+        offline_data['shotnum'] = hdf['shotnum'][:]
+        # shape: (3793282, 27) (3793282, 14) (3793282, 27) (3793282,) 
+        total_state_num = np.array(full_observations).shape[1]
+        total_act_num = np.array(offline_data['pre_actions']).shape[1]
+
+        if states_in_obs is not None:
+            # Select only the specified columns/dimensions
+            state_idxs = state_names_to_idxs(offline_data_dir, states_in_obs)
+            offline_data['observations'] = full_observations[:, state_idxs]
+            offline_data['next_observations'] = full_next_observations[:, state_idxs]
+        else:
+            # Use all dimensions if none specified
+            offline_data['observations'] = full_observations
+            offline_data['next_observations'] = full_next_observations
+        
+        if acts_in_obs is not None:
+            # Select only the specified columns/dimensions
+            acts_idxs = actuator_names_to_idxs(offline_data_dir, acts_in_obs)
+            offline_data['pre_actions'] = offline_data['pre_actions'][:, acts_idxs]
+            offline_data['action_deltas'] = offline_data['action_deltas'][:, acts_idxs]
+
+    offline_data['obs_dim'] = np.array(offline_data['observations']).shape[1]
+    offline_data['act_dim'] = np.array(offline_data['pre_actions']).shape[1]
+
+    print('############# obs dim ############')
+    print(f"selected {offline_data['obs_dim']}/{total_state_num} states")
+    print('############# act dim ############')
+    print(f"selected {offline_data['act_dim']}/{total_act_num} states")
+
+    # the first 30 steps are dirty
+    # print(offline_data['observations'][20:50]) 
+    # print(offline_data['observations'][26:51] - offline_data['next_observations'][25:50])
+    # print(offline_data['shotnum'][:51])
+    # print(offline_data['observations'][26:51] - offline_data['observations'][25:50] - offline_data['next_observations'][25:50])
+    mask = []
+    old_shot_num = -1
+    shot_num_count = -1
+    for i in range(len(offline_data['shotnum'])):
+        shot_num = offline_data['shotnum'][i]
+        if shot_num != old_shot_num:
+            old_shot_num = shot_num
+            shot_num_count = 0
+        else:
+            shot_num_count += 1
+        
+        if shot_num_count >= 30:
+            mask.append(i)
+    
+    offline_data['observations'] = offline_data['observations'][mask]
+    offline_data['pre_actions'] = offline_data['pre_actions'][mask]
+    offline_data['actions'] = offline_data['pre_actions']
+    offline_data['action_deltas'] = offline_data['action_deltas'][mask]
+    # offline_data['next_observations'] = offline_data['next_observations'][mask]
+    offline_data['shotnum'] = offline_data['shotnum'][mask]
+    print(offline_data['shotnum'][:100])
+    tot_num = offline_data['shotnum'].shape[0]
+    # print(tot_num, offline_data['observations'][1001:1031] - offline_data['next_observations'][1000:1030]) # 3108605
+
+    # get the start points for RL training
+    with open(offline_data_dir + 'info.pkl', 'rb') as file:
+        data_info = pickle.load(file)
+        # print(data_info['state_space'], len(data_info['state_space']))
+    offline_data['index_list'] = []
+    keyword = tracking_target
+    for i in range(offline_data['obs_dim']):
+        if data_info['state_space'][i].startswith(keyword):
+            offline_data['index_list'].append(i)
+    
+    # get the action bounds
+    with open(action_bound_path, 'r') as file: 
+        data_dict = yaml.safe_load(file)
+    
+    offline_data['action_lower_bounds'], offline_data['action_upper_bounds'] = [], []
+    for act in data_info['actuator_space']:
+        lb, ub = data_dict[act]
+        assert lb <= ub
+        offline_data['action_lower_bounds'].append(lb)
+        offline_data['action_upper_bounds'].append(ub)
+
+    offline_data['action_lower_bounds'] = np.array(offline_data['action_lower_bounds'])
+    offline_data['action_upper_bounds'] = np.array(offline_data['action_upper_bounds'])
+
+    if acts_in_obs is not None:
+            # Select only the specified columns/dimensions
+            offline_data['action_lower_bounds'] = offline_data['action_lower_bounds'][:, acts_idxs]
+            offline_data['action_upper_bounds'] = offline_data['action_upper_bounds'][:, acts_idxs]
+
+    offline_data['pre_actions'] = np.clip(offline_data['pre_actions'], offline_data['action_lower_bounds'], offline_data['action_upper_bounds'])
+    offline_data['action_deltas'] = np.clip(offline_data['action_deltas'], offline_data['action_lower_bounds'], offline_data['action_upper_bounds'])
+    # print(offline_data['action_lower_bounds'], offline_data['action_upper_bounds'])
+            
+    offline_data['tracking_ref'] = []
+    offline_data['tracking_states'] = []
+    offline_data['tracking_actions'] = []
+    found = False
+    for i in range(tot_num):
+        if int(offline_data['shotnum'][i]) == reference_shot:
+            offline_data['tracking_ref'].append(offline_data['observations'][i][offline_data['index_list']])
+            found = True
+            
+            offline_data['tracking_states'].append(offline_data['observations'][i])
+            offline_data['tracking_actions'].append(offline_data['pre_actions'][i])
+        else:
+            if found:
+                break
+    offline_data['tracking_ref'] = np.array(offline_data['tracking_ref'])
+    print(offline_data['tracking_ref'].shape)
+    offline_data['tracking_states'] = np.array(offline_data['tracking_states'])
+    offline_data['tracking_actions'] = np.array(offline_data['tracking_actions'])
+
+    ref_start_index = defaultdict(list)
+    for i in range(tot_num):
+        shot_num = int(offline_data['shotnum'][i])
+        if -50 <= shot_num - reference_shot <=50:
+            # if len(ref_start_index[shot_num]) < offline_data['tracking_ref'].shape[0] - 1:
+            if len(ref_start_index[shot_num]) < 10:
+                ref_start_index[shot_num].append(i)
+    # offline_data['ref_start_index'] = ref_start_index
+
+    # for key in ref_start_index:
+    #     offline_data['ref_start_index'].extend(ref_start_index[key])
+    # 4082
+    # print(len(offline_data['ref_start_index']), offline_data['ref_start_index'])
+
+    # time step labels and termination labels
+    offline_data['time_step'] = []
+    offline_data['terminals'] = []
+    ts = 0
+    for i in tqdm(range(tot_num-1)):
+        #if offline_data['shotnum'][i] == reference_shot: # TODO: double check if this makes sense from data side
+        offline_data['time_step'].append(ts)
+        if offline_data['shotnum'][i+1] != offline_data['shotnum'][i]:
+            offline_data['terminals'].append(True)
+            ts = 0
+        else:
+            offline_data['terminals'].append(False)
+            ts += 1
+    offline_data['time_step'].append(ts)
+    offline_data['terminals'].append(True) # a litlle bit buggy
+    offline_data['time_step'] = np.array(offline_data['time_step'])
+    # print( offline_data['time_step'].shape, offline_data['next_observations'].shape, len(mask))
+    # assert offline_data['time_step'].shape == offline_data['next_observations'].shape
+    offline_data['terminals'] = np.array(offline_data['terminals'])
+    # shape: (3793282,) (3793282,)
+
+    with h5py.File(save_file, 'w') as hdf:
+        for key, value in offline_data.items():
+            hdf.create_dataset(key, data=value)
+
+    return offline_data
+
 def get_offline_data(data_path, tracking_target):
     offline_data = {}
     # get main components
     with h5py.File(data_path, 'r') as hdf:
         # print("Keys in the file:", list(hdf.keys()))
-        offline_data['observations'] = hdf['observations'][:]
-        # offline_data['actions'] = hdf['actions'][:]
+        full_observations = hdf['observations'][:]
+        offline_data['actions'] = hdf['actions'][:]
         # actions wasn't processed in get_raw_data
         offline_data['next_observations'] = hdf['next_observations'][:]
         offline_data['terminals'] = hdf['terminals'][:]
@@ -136,9 +320,27 @@ class NFEnv:
 
     def get_reward(self, next_state, time_step): # return a numpy array
         # this time_step is for the next_state
-        targets = self.tracking_ref[time_step]
-        return -1.0 * (np.square(next_state[:, self.index_list] - targets) * self.track_coefficients[np.newaxis, :]).mean(axis=1) / float(self.time_limit)
+        # time_step_indxs = np.where(time_step == 0)[0] #TODO: Ask about what this step does
+        # print(time_step_indxs.shape)
+        if np.isscalar(time_step):
+            if time_step >= self.time_limit:
+                time_step = self.time_limit - 1
+            targets = self.tracking_ref[time_step]
+            # print(next_state[:, self.index_list].shape, targets.shape, self.track_coefficients[np.newaxis, :].shape)
+            return -1.0 * (np.square(next_state[:, self.index_list] - targets) * self.track_coefficients[np.newaxis, :]).mean(axis=1) / float(self.time_limit)
+        else:
+            for i in range(len(time_step)):
+                if time_step[i] >= self.time_limit:
+                    time_step[i] = self.time_limit - 1
+            targets = self.tracking_ref[time_step]
+            print("fusion env get reward debug dims", next_state[:, self.index_list].shape, targets.shape, self.track_coefficients[np.newaxis, :].shape)
+            return -1.0 * (np.square(next_state[:, self.index_list] - targets) * self.track_coefficients[np.newaxis, :]).mean(axis=1) / float(self.time_limit)
+            #TODO: 230 magic number fix
         # return -1.0 * (np.square(next_state[:, self.index_list] - targets) * self.track_coefficients[np.newaxis, :]).mean(axis=1) 
 
     def is_done(self, time_step):
+        # print('fusion env', time_step, self.time_limit)
         return time_step >= self.time_limit - 1
+
+    def get_normalized_score(self, ep_reward):
+        return ep_reward / 100
