@@ -29,12 +29,12 @@ class ReplayBuffer:
         self.obs_dtype = obs_dtype
         self.action_dim = action_dim
         self.action_dtype = action_dtype
-        self.seq_len = seq_len
+        self.seq_len = int(seq_len)
         
         self._ptr = 0
         self._size = 0
 
-        if seq_len > 1:
+        if self.seq_len > 1:
             self.observations = np.zeros((self._max_size, seq_len) + self.obs_shape, dtype=obs_dtype)
             self.next_observations = np.zeros((self._max_size, seq_len) + self.obs_shape, dtype=obs_dtype)
             self.actions = np.zeros((self._max_size, seq_len, self.action_dim), dtype=action_dtype)
