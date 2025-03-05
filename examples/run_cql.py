@@ -3,8 +3,8 @@ import random
 from gym.spaces import Box
 import numpy as np
 import torch
-import os, sys
-sys.path.append('../')
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian
@@ -14,7 +14,7 @@ from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import CQLPolicy
 
-from envs.fusion import SA_processor, NFEnv, get_offline_data #?
+from envs.fusion import SA_processor, NFEnv, get_offline_data, get_raw_data
 current_directory = os.getcwd() #?
 
 def get_args():
@@ -47,7 +47,7 @@ def get_args():
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--cuda_id", type=int, default=1)
 
-    parser.add_argument("--offline_data_dir", type=str, default=current_directory + '/../data/nf_data.h5') #?
+    parser.add_argument("--offline_data_dir", type=str, default=current_directory + '/../data/nf_data.h5') # must run from the examples folder
     parser.add_argument('--rnn_model_dir', type=str, default='/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar') #?
 
     return parser.parse_args()

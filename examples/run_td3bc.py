@@ -1,8 +1,7 @@
 import argparse
 import random
 
-import gym
-import d4rl
+from gym.spaces import Box
 
 import numpy as np
 import torch
@@ -19,7 +18,8 @@ from offlinerlkit.buffer import ReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import TD3BCPolicy
-
+from envs.fusion import SA_processor, NFEnv, get_offline_data, get_raw_data
+current_directory = os.getcwd()
 
 """
 suggested hypers
@@ -46,30 +46,48 @@ def get_args():
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
-
+    parser.add_argument("--offline_data_dir", type=str, default=current_directory + '/../data/nf_data.h5') #?
+    parser.add_argument('--rnn_model_dir', type=str, default='/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar') #?
+    parser.add_argument("--cuda_id", type=int, default=1)
+   
     return parser.parse_args()
 
 
 def train(args=get_args()):
-    # create env and dataset
-    env = gym.make(args.task)
-    dataset = qlearning_dataset(env)
-    if 'antmaze' in args.task:
-        dataset["rewards"] -= 1.0
-    args.obs_shape = env.observation_space.shape
-    args.action_dim = np.prod(env.action_space.shape)
-    args.max_action = env.action_space.high[0]
+
+    ############################# Modified #################################
+    args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
+    offline_data = get_offline_data(data_path=args.offline_data_dir, tracking_target=args.task)
+    sa_processor = SA_processor(bounds=(offline_data['action_lower_bounds'], offline_data['action_upper_bounds']), \
+                                time_limit=offline_data['tracking_ref'].shape[0], device=args.device)
+    env = NFEnv(args.rnn_model_dir, args.device, offline_data['tracking_ref'], offline_data['tracking_states'], offline_data['tracking_actions'], offline_data['index_list'], sa_processor)
+    
+    # collect the data for rl training
+    offline_data['rewards'] = env.get_reward(offline_data['observations'], offline_data['time_step'])
+    offline_data['actions'] = sa_processor.normalize_action(offline_data['actions'])
+    offline_data['next_observations'] = np.concatenate([offline_data['observations'], (offline_data['time_step'][:, np.newaxis]+1)/float(sa_processor.time_limit)], axis=1)
+    offline_data['observations'] = np.concatenate([offline_data['observations'], offline_data['time_step'][:, np.newaxis]/float(sa_processor.time_limit)], axis=1)
+    #TODO: observations vs. next observations?
+    # is next observation supposed to be based on the original or the rewritten one? changed order to make the shapes the same
+
+    print(offline_data['observations'].shape, offline_data['next_observations'].shape, offline_data['time_step'].shape, offline_data['rewards'].shape, offline_data['actions'].shape)
+
+    args.next_obs_shape = (offline_data['next_observations'].shape[1], )
+    args.obs_shape = (offline_data['observations'].shape[1], )
+    args.action_dim = offline_data['actions'].shape[1]
+    args.max_action = 1.0
+    ############################# Modified End #################################
 
     # create buffer
     buffer = ReplayBuffer(
-        buffer_size=len(dataset["observations"]),
+        buffer_size=offline_data["observations"].shape[0],
         obs_shape=args.obs_shape,
         obs_dtype=np.float32,
         action_dim=args.action_dim,
         action_dtype=np.float32,
         device=args.device
     )
-    buffer.load_dataset(dataset)
+    buffer.load_dataset(offline_data)
     obs_mean, obs_std = buffer.normalize_obs()
 
     # seed
@@ -123,7 +141,7 @@ def train(args=get_args()):
         "tb": "tensorboard"
     }
     logger = Logger(log_dirs, output_config)
-    logger.log_hyperparameters(vars(args))
+    # logger.log_hyperparameters(vars(args))
 
     # create policy trainer
     policy_trainer = MFPolicyTrainer(
