@@ -1,2 +1,5 @@
 data/*
 data
+examples/log/*
+offlinerlkit/__pycache__/*
+src/*

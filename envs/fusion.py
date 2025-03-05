@@ -219,7 +219,7 @@ def get_offline_data(data_path, tracking_target):
     # get main components
     with h5py.File(data_path, 'r') as hdf:
         # print("Keys in the file:", list(hdf.keys()))
-        full_observations = hdf['observations'][:]
+        offline_data['observations'] = hdf['observations'][:]
         offline_data['actions'] = hdf['actions'][:]
         # actions wasn't processed in get_raw_data
         offline_data['next_observations'] = hdf['next_observations'][:]
