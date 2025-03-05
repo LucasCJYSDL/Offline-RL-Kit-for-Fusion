@@ -96,7 +96,7 @@ class MFPolicyTrainer:
 
         while num_episodes < self._eval_episodes:
             action = self.policy.select_action(obs.reshape(1,-1), deterministic=True)
-            next_obs, reward, terminal, _ = self.eval_env.step(action.flatten())
+            next_obs, reward, terminal, _ = self.eval_env.step(action)
             episode_reward += reward
             episode_length += 1
 
