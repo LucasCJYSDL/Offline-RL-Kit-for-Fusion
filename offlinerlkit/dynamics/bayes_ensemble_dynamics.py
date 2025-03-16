@@ -86,7 +86,7 @@ class BayesEnsembleDynamics(EnsembleDynamics):
         if real_samples is None:
             info["likelihood"] = get_prob(mus, logvars.exp().sqrt(), samples.unsqueeze(0).repeat(mus.shape[0], 1, 1)).clone().numpy() # torch.Size([7, 50000])
         else:
-            real_samples = torch.FloatTensor(real_samples).to(mus.device)
+            samples = torch.FloatTensor(real_samples).to(mus.device)
             info["likelihood"] = get_prob(mus, logvars.exp().sqrt(), samples.unsqueeze(0).repeat(mus.shape[0], 1, 1)).clone().numpy()
 
         return next_obs, reward, terminal, info
