@@ -1,37 +1,26 @@
 import argparse
 import random
-import gym
-import d4rl
+
 import numpy as np
 import torch
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian
-from offlinerlkit.utils.load_dataset import qlearning_dataset, fusion_dataset, FusionEnv
 from offlinerlkit.buffer import ReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import CQLPolicy
 
-model_path = os.path.join("./models_ope", "walker_walk", "walker_walk_0_relu_0.0001_8_0.05_s_3_mc_nm", "behavior_ckpt100.pth")
-"""
-suggested hypers
-cql-weight=5.0, temperature=1.0 for all D4RL-Gym tasks
-"""
-def str_to_float_list(input_string):
-    return [float(item) for item in input_string.split(',')]
-    
+from gym.spaces import Box
+from envs.fusion import SA_processor, NFEnv, load_offline_data
+current_directory = os.getcwd() #?
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--fusion-expt", action="store_true",  help="use fusion data") 
     parser.add_argument("--algo-name", type=str, default="cql")
-    parser.add_argument("--task", type=str, default="hopper-medium-v2")
-    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256, 256])
-    parser.add_argument("--target_rotation", type=str_to_float_list, help='Target Differential Rotation', default=['1', '1', '1', '1'])
-    parser.add_argument("--target_type", type=str, default="scalar")
     parser.add_argument("--actor-lr", type=float, default=1e-4)
     parser.add_argument("--critic-lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -40,7 +29,7 @@ def get_args():
     parser.add_argument("--target-entropy", type=int, default=None)
     parser.add_argument("--auto-alpha", default=True)
     parser.add_argument("--alpha-lr", type=float, default=1e-4)
-    parser.add_argument("--seq-len", type=float, default=5)
+
     parser.add_argument("--cql-weight", type=float, default=5.0)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--max-q-backup", type=bool, default=False)
@@ -49,45 +38,46 @@ def get_args():
     parser.add_argument("--lagrange-threshold", type=float, default=10.0)
     parser.add_argument("--cql-alpha-lr", type=float, default=3e-4)
     parser.add_argument("--num-repeat-actions", type=int, default=10)
-    parser.add_argument("--actuators", type=str_to_float_list, help='Actuators to control', default=['pinj', 'tinj', 'GasA'])
+    
     parser.add_argument("--epoch", type=int, default=1000)
-    parser.add_argument("--model-free", action="store_true",  help="use model-free RL algorithm") 
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument("--profile", type=str, default="default")
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
-    parser.add_argument("--downsample_size", type=int, default=5)
-    parser.add_argument("--ec_type", type=str, default="profile")
+
+    parser.add_argument("--task", type=str, default="betan_EFIT01") #?
+    parser.add_argument("--seed", type=int, default=1)
+    # parser.add_argument("--offline_data_dir", type=str, default=current_directory + '/data/nf_data.h5') # must run from the examples folder
+    parser.add_argument("--raw_data_dir", type=str, default='/zfsauton/project/fusion/data/organized/noshape_gas_flat_top/') # must run from the examples folder
+    parser.add_argument('--rnn_model_dir', type=str, default='/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar') #?
+    parser.add_argument("--use_partial", type=bool, default=True)
+    parser.add_argument("--cuda_id", type=int, default=0)
+
     return parser.parse_args()
 
-
 def train(args=get_args()):
-    # create env and dataset
-    if args.target_type == "profile":
-        args.target_rotation = [np.array(args.target_rotation).astype(float)] * 2
-    else:
-        args.target_rotation = [0, 0]
-    if args.fusion_expt: 
-        dataset = fusion_dataset(args) #this step currently also sets the target (profile/scalar)
-        env = FusionEnv(dataset)
-        args.obs_shape = (env.observation_shape,)
-        args.action_dim = np.prod(env.action_space.shape)
-        args.max_action = max(env.action_space.high)
-    else:
-        env = gym.make(args.task)
-        dataset = qlearning_dataset(env)
-        args.obs_shape = env.observation_space.shape
-        args.action_dim = np.prod(env.action_space.shape)
-        args.max_action = env.action_space.high[0]
-        env.seed(args.seed)
+    ############################# Modified #################################
+    args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
+    args.offline_data_dir = args.raw_data_dir + 'processed_data_rl.h5'
+    offline_data = load_offline_data(args.offline_data_dir, args.raw_data_dir, args.task, args.use_partial)
+    sa_processor = SA_processor(bounds=(offline_data['action_lower_bounds'], offline_data['action_upper_bounds']), \
+                                time_limit=offline_data['tracking_ref'].shape[0], device=args.device)
+    env = NFEnv(args.rnn_model_dir, args.device, offline_data['tracking_ref'], offline_data['tracking_states'], \
+                offline_data['tracking_pre_actions'], offline_data['tracking_actions'], offline_data['index_list'], \
+                sa_processor, offline_data["state_idxs"], offline_data["action_idxs"])
+    
+    # collect the data for rl training
+    offline_data['rewards'] = env.get_reward(offline_data['observations'], offline_data['time_step'])
+    offline_data['actions'] = sa_processor.normalize_action(offline_data['actions'])
+    offline_data['observations'] = np.concatenate([offline_data['observations'], offline_data['time_step'][:, np.newaxis]/float(sa_processor.time_limit)], axis=1)
+    offline_data['next_observations'] = np.concatenate([offline_data['next_observations'], (offline_data['time_step'][:, np.newaxis]+1)/float(sa_processor.time_limit)], axis=1)
 
-    print(args.obs_shape, args.action_dim, args.max_action, env.action_space)
+    print(offline_data['observations'].shape, offline_data['next_observations'].shape, offline_data['time_step'].shape, offline_data['rewards'].shape, offline_data['actions'].shape)
 
-
-    # See https://github.com/aviralkumar2907/CQL/blob/master/d4rl/examples/cql_antmaze_new.py#L22
-    if 'antmaze' in args.task and not args.fusion_expt:
-        dataset["rewards"] = (dataset["rewards"] - 0.5) * 4.0
+    args.obs_shape = (offline_data['observations'].shape[1], )
+    args.action_dim = offline_data['actions'].shape[1]
+    args.max_action = 1.0
+    action_space = Box(low=-args.max_action, high=args.max_action, shape=(args.action_dim, ), dtype=np.float32)
+    ############################# Modified End #################################
 
     # seed
     random.seed(args.seed)
@@ -95,18 +85,19 @@ def train(args=get_args()):
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     torch.backends.cudnn.deterministic = True
-
+    env.seed(args.seed)
 
     # create policy model
     actor_backbone = MLP(input_dim=np.prod(args.obs_shape), hidden_dims=args.hidden_dims)
     critic1_backbone = MLP(input_dim=np.prod(args.obs_shape) + args.action_dim, hidden_dims=args.hidden_dims)
     critic2_backbone = MLP(input_dim=np.prod(args.obs_shape) + args.action_dim, hidden_dims=args.hidden_dims)
+
     dist = TanhDiagGaussian(
         latent_dim=getattr(actor_backbone, "output_dim"),
         output_dim=args.action_dim,
         unbounded=True,
         conditioned_sigma=True,
-        max_mu=args.max_action #this might become an issue for fusion dataset, debug later.
+        max_mu=args.max_action
     )
     actor = ActorProb(actor_backbone, dist, args.device)
     critic1 = Critic(critic1_backbone, args.device)
@@ -115,17 +106,9 @@ def train(args=get_args()):
     critic1_optim = torch.optim.Adam(critic1.parameters(), lr=args.critic_lr)
     critic2_optim = torch.optim.Adam(critic2.parameters(), lr=args.critic_lr)
 
-    ################ LOAD MODEL ######################
-    model = None
-    
-    if not args.model_free and args.fusion_expt: 
-        model.load_state_dict(torch.load(model_path, weights_only=True, map_location=args.device))
-
-    ###################################################
-
     if args.auto_alpha:
         target_entropy = args.target_entropy if args.target_entropy \
-            else -np.prod(env.action_space.shape)
+            else -args.action_dim
 
         args.target_entropy = target_entropy
 
@@ -143,7 +126,7 @@ def train(args=get_args()):
         actor_optim,
         critic1_optim,
         critic2_optim,
-        action_space=env.action_space,
+        action_space=action_space,
         tau=args.tau,
         gamma=args.gamma,
         alpha=alpha,
@@ -154,32 +137,20 @@ def train(args=get_args()):
         with_lagrange=args.with_lagrange,
         lagrange_threshold=args.lagrange_threshold,
         cql_alpha_lr=args.cql_alpha_lr,
-        num_repeart_actions=args.num_repeat_actions,
-        fusion=args.fusion_expt,
-        model_free=args.model_free,
-        target_dr=args.target_rotation if args.fusion_expt else None,
-        model = model,
-        args = args
+        num_repeart_actions=args.num_repeat_actions
     )
 
-    ############################# DONE TILL HERE ##################################
-
-    seq_length = args.seq_len if not args.model_free else 1
     # create buffer
     buffer = ReplayBuffer(
-        buffer_size=len(dataset["observations"]),
+        buffer_size=offline_data["observations"].shape[0],
         obs_shape=args.obs_shape,
         obs_dtype=np.float32,
         action_dim=args.action_dim,
         action_dtype=np.float32,
-        device=args.device,
-        seq_len = seq_length
+        device=args.device
     )
-    buffer.load_dataset(dataset)
-    
-    env.dataset = buffer
-    
-    env.model = model
+    buffer.load_dataset(offline_data)
+
     # log
     log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
     # key: output file name, value: output handler type
@@ -189,7 +160,7 @@ def train(args=get_args()):
         "tb": "tensorboard"
     }
     logger = Logger(log_dirs, output_config)
-    logger.log_hyperparameters(vars(args))
+    # logger.log_hyperparameters(vars(args))
 
     # create policy trainer
     policy_trainer = MFPolicyTrainer(

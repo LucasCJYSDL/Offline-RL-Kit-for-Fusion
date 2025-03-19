@@ -72,7 +72,7 @@ class TD3BCPolicy(TD3Policy):
     
     def select_action(self, obs: np.ndarray, deterministic: bool = False) -> np.ndarray:
         if self.scaler is not None:
-            obs = self.scaler.transform(obs)
+            obs = self.scaler.transform(obs.cpu())
         with torch.no_grad():
             action = self.actor(obs).cpu().numpy()
         if not deterministic:

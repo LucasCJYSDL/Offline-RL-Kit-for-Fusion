@@ -63,12 +63,8 @@ class MFPolicyTrainer:
             if self.lr_scheduler is not None:
                 self.lr_scheduler.step()
             
-            # evaluate current policy: todo
-            '''
-            if self.policy.fusion:
-                eval_info = self._evaluate_fusion()
-            else:
-                eval_info = self._evaluate() '''
+            
+            eval_info = self._evaluate()
             
             ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(eval_info["eval/episode_reward"])
             ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(eval_info["eval/episode_length"])
@@ -91,31 +87,6 @@ class MFPolicyTrainer:
 
         return {"last_10_performance": np.mean(last_10_performance)}
 
-
-    def _evaluate_fusion(self) -> Dict[str, List[float]]:
-        self.policy.eval()
-        obs_seq, action_seq = self.eval_env.reset()
-        eval_ep_info_buffer = []
-        episode_reward, episode_length = 0, 0
-
-        #while num_episodes < self._eval_episodes:
-        while episode_length < 25:
-            
-            action = self.policy.actforward(obs_seq[:, -1].reshape(1,-1), deterministic=True) #B x action_dim
-            action_seq[:, -1] = action
-            next_obs, reward, _ = self.eval_env.step(obs_seq, action_seq, self.policy.target_dr) 
-            episode_reward += reward
-            episode_length += 1
-            obs_seq[:, :-1] = obs_seq[:, 1:].clone()
-            obs_seq[:, -1] = next_obs.clone()
-            action_seq[:, :-1] = action_seq[:, 1:].clone()
-
-        
-        return {
-            "eval/episode_reward": [ep_info["episode_reward"] for ep_info in eval_ep_info_buffer],
-            "eval/episode_length": [ep_info["episode_length"] for ep_info in eval_ep_info_buffer]
-        }
-        
     def _evaluate(self) -> Dict[str, List[float]]:
         self.policy.eval()
         obs = self.eval_env.reset()
@@ -124,8 +95,8 @@ class MFPolicyTrainer:
         episode_reward, episode_length = 0, 0
 
         while num_episodes < self._eval_episodes:
-            action = self.policy.select_action(obs.reshape(1,-1), deterministic=True)
-            next_obs, reward, terminal, _ = self.eval_env.step(action.flatten())
+            action = self.policy.select_action(obs, deterministic=True)
+            next_obs, reward, terminal, _ = self.eval_env.step(action)
             episode_reward += reward
             episode_length += 1
 

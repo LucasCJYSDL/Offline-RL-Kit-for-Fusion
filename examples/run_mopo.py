@@ -3,9 +3,6 @@ import os
 import sys
 import random
 
-import gym
-import d4rl
-
 import numpy as np
 import torch
 
@@ -15,13 +12,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian, EnsembleDynamicsModel
 from offlinerlkit.dynamics import EnsembleDynamics
-from offlinerlkit.utils.scaler import StandardScaler
-from offlinerlkit.utils.termination_fns import get_termination_fn
-from offlinerlkit.utils.load_dataset import qlearning_dataset
 from offlinerlkit.buffer import ReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MBPolicyTrainer
 from offlinerlkit.policy import MOPOPolicy
+
+from envs.fusion import SA_processor, NFEnv, load_offline_data
+current_directory = os.getcwd() #?
 
 
 """
@@ -42,8 +39,6 @@ walker2d-medium-expert-v2: rollout-length=1, penalty-coef=2.5
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo-name", type=str, default="mopo")
-    parser.add_argument("--task", type=str, default="walker2d-medium-expert-v2")
-    parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--actor-lr", type=float, default=1e-4)
     parser.add_argument("--critic-lr", type=float, default=3e-4)
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256])
@@ -54,35 +49,53 @@ def get_args():
     parser.add_argument("--target-entropy", type=int, default=None)
     parser.add_argument("--alpha-lr", type=float, default=1e-4)
 
-    parser.add_argument("--dynamics-lr", type=float, default=1e-3)
-    parser.add_argument("--dynamics-hidden-dims", type=int, nargs='*', default=[200, 200, 200, 200])
-    parser.add_argument("--dynamics-weight-decay", type=float, nargs='*', default=[2.5e-5, 5e-5, 7.5e-5, 7.5e-5, 1e-4])
-    parser.add_argument("--n-ensemble", type=int, default=7)
-    parser.add_argument("--n-elites", type=int, default=5)
     parser.add_argument("--rollout-freq", type=int, default=1000)
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
-    parser.add_argument("--rollout-length", type=int, default=1)
+    parser.add_argument("--rollout-length", type=int, default=5)
     parser.add_argument("--penalty-coef", type=float, default=2.5)
     parser.add_argument("--model-retain-epochs", type=int, default=5)
     parser.add_argument("--real-ratio", type=float, default=0.05)
-    parser.add_argument("--load-dynamics-path", type=str, default=None)
 
     parser.add_argument("--epoch", type=int, default=3000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
+
+    parser.add_argument("--task", type=str, default="betan_EFIT01") #?
+    parser.add_argument("--seed", type=int, default=1)
+    # parser.add_argument("--offline_data_dir", type=str, default=current_directory + '/data/nf_data.h5') # must run from the examples folder
+    parser.add_argument("--raw_data_dir", type=str, default='/zfsauton/project/fusion/data/organized/noshape_gas_flat_top/') # must run from the examples folder
+    parser.add_argument('--rnn_model_dir', type=str, default='/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar') #?
+    parser.add_argument("--use_partial", type=bool, default=True)
+    parser.add_argument("--cuda_id", type=int, default=0)
 
     return parser.parse_args()
 
 
 def train(args=get_args()):
-    # create env and dataset
-    env = gym.make(args.task)
-    dataset = qlearning_dataset(env)
-    args.obs_shape = env.observation_space.shape
-    args.action_dim = np.prod(env.action_space.shape)
-    args.max_action = env.action_space.high[0]
+    
+    ############################# Modified #################################
+    args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
+    args.offline_data_dir = args.raw_data_dir + 'processed_data_rl.h5'
+    offline_data = load_offline_data(args.offline_data_dir, args.raw_data_dir, args.task, args.use_partial)
+    sa_processor = SA_processor(bounds=(offline_data['action_lower_bounds'], offline_data['action_upper_bounds']), \
+                                time_limit=offline_data['tracking_ref'].shape[0], device=args.device)
+    env = NFEnv(args.rnn_model_dir, args.device, offline_data['tracking_ref'], offline_data['tracking_states'], \
+                offline_data['tracking_pre_actions'], offline_data['tracking_actions'], offline_data['index_list'], \
+                sa_processor, offline_data["state_idxs"], offline_data["action_idxs"])
+    
+    # collect the data for rl training
+    offline_data['rewards'] = env.get_reward(offline_data['observations'], offline_data['time_step'])
+    offline_data['actions'] = sa_processor.normalize_action(offline_data['actions'])
+    offline_data['observations'] = np.concatenate([offline_data['observations'], offline_data['time_step'][:, np.newaxis]/float(sa_processor.time_limit)], axis=1)
+    offline_data['next_observations'] = np.concatenate([offline_data['next_observations'], (offline_data['time_step'][:, np.newaxis]+1)/float(sa_processor.time_limit)], axis=1)
+
+    print(offline_data['observations'].shape, offline_data['next_observations'].shape, offline_data['time_step'].shape, offline_data['rewards'].shape, offline_data['actions'].shape)
+
+    args.obs_shape = (offline_data['observations'].shape[1], )
+    args.action_dim = offline_data['actions'].shape[1]
+    args.max_action = 1.0
+    ############################# Modified End #################################
 
     # seed
     random.seed(args.seed)
@@ -114,7 +127,7 @@ def train(args=get_args()):
 
     if args.auto_alpha:
         target_entropy = args.target_entropy if args.target_entropy \
-            else -np.prod(env.action_space.shape)
+            else -args.action_dim
 
         args.target_entropy = target_entropy
 
@@ -125,32 +138,19 @@ def train(args=get_args()):
         alpha = args.alpha
 
     # create dynamics
-    load_dynamics_model = True if args.load_dynamics_path else False
     dynamics_model = EnsembleDynamicsModel(
-        obs_dim=np.prod(args.obs_shape),
-        action_dim=args.action_dim,
-        hidden_dims=args.dynamics_hidden_dims,
-        num_ensemble=args.n_ensemble,
-        num_elites=args.n_elites,
-        weight_decays=args.dynamics_weight_decay,
+        model_path=args.rnn_model_dir,
         device=args.device
     )
-    dynamics_optim = torch.optim.Adam(
-        dynamics_model.parameters(),
-        lr=args.dynamics_lr
-    )
-    scaler = StandardScaler()
-    termination_fn = get_termination_fn(task=args.task)
+
+    termination_fn = env.is_done
+    reward_fn = env.get_reward
     dynamics = EnsembleDynamics(
         dynamics_model,
-        dynamics_optim,
-        scaler,
         termination_fn,
+        reward_fn,
         penalty_coef=args.penalty_coef,
     )
-
-    if args.load_dynamics_path:
-        dynamics.load(args.load_dynamics_path)
 
     # create policy
     policy = MOPOPolicy(
@@ -161,6 +161,9 @@ def train(args=get_args()):
         actor_optim,
         critic1_optim,
         critic2_optim,
+        offline_data['state_idxs'],
+        offline_data['action_idxs'],
+        sa_processor,
         tau=args.tau,
         gamma=args.gamma,
         alpha=alpha
@@ -168,14 +171,14 @@ def train(args=get_args()):
 
     # create buffer
     real_buffer = ReplayBuffer(
-        buffer_size=len(dataset["observations"]),
+        buffer_size=len(offline_data["observations"]),
         obs_shape=args.obs_shape,
         obs_dtype=np.float32,
         action_dim=args.action_dim,
         action_dtype=np.float32,
         device=args.device
     )
-    real_buffer.load_dataset(dataset)
+    real_buffer.load_dataset(offline_data, hidden=True)
     fake_buffer = ReplayBuffer(
         buffer_size=args.rollout_batch_size*args.rollout_length*args.model_retain_epochs,
         obs_shape=args.obs_shape,
@@ -195,7 +198,7 @@ def train(args=get_args()):
         "tb": "tensorboard"
     }
     logger = Logger(log_dirs, output_config)
-    logger.log_hyperparameters(vars(args))
+    # logger.log_hyperparameters(vars(args))
 
     # create policy trainer
     policy_trainer = MBPolicyTrainer(
@@ -212,11 +215,8 @@ def train(args=get_args()):
         eval_episodes=args.eval_episodes,
         lr_scheduler=lr_scheduler
     )
-
-    # train
-    if not load_dynamics_model:
-        dynamics.train(real_buffer.sample_all(), logger, max_epochs_since_update=5)
     
+    # train
     policy_trainer.train()
 
 

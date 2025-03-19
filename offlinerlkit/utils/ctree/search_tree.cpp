@@ -4,22 +4,22 @@
 {
     "distutils": {
         "depends": [
-            "/zfsauton2/home/jiayuc2/Proj_3/NewContBAMCP/offlinerlkit/utils/ctree/lib/cminimax.h",
-            "/zfsauton2/home/jiayuc2/Proj_3/NewContBAMCP/offlinerlkit/utils/ctree/lib/cnode.h"
+            "/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit/offlinerlkit/utils/ctree/lib/cminimax.h",
+            "/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit/offlinerlkit/utils/ctree/lib/cnode.h"
         ],
         "extra_compile_args": [
             "-std=c++11"
         ],
         "include_dirs": [
-            "/zfsauton2/home/jiayuc2/Proj_3/NewContBAMCP/offlinerlkit/utils/ctree",
-            "/zfsauton2/home/jiayuc2/Proj_3/NewContBAMCP/offlinerlkit/utils/ctree/lib/"
+            "/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit/offlinerlkit/utils/ctree",
+            "/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit/offlinerlkit/utils/ctree/lib/"
         ],
         "language": "c++",
         "name": "search_tree",
         "sources": [
-            "/zfsauton2/home/jiayuc2/Proj_3/NewContBAMCP/offlinerlkit/utils/ctree/search_tree.pyx",
-            "/zfsauton2/home/jiayuc2/Proj_3/NewContBAMCP/offlinerlkit/utils/ctree/lib/cnode.cpp",
-            "/zfsauton2/home/jiayuc2/Proj_3/NewContBAMCP/offlinerlkit/utils/ctree/lib/cminimax.cpp"
+            "/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit/offlinerlkit/utils/ctree/search_tree.pyx",
+            "/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit/offlinerlkit/utils/ctree/lib/cnode.cpp",
+            "/zfsauton2/home/jiayuc2/Proj_8/Offline-RL-Kit/offlinerlkit/utils/ctree/lib/cminimax.cpp"
         ]
     },
     "module_name": "search_tree"
@@ -1012,7 +1012,7 @@ struct __pyx_obj_11search_tree_ResultsWrapper;
 struct __pyx_obj_11search_tree_MinMaxStatsList;
 struct __pyx_obj_11search_tree_Roots;
 
-/* "search_tree.pyx":31
+/* "search_tree.pyx":32
  * 
  * 
  * cdef class ResultsWrapper:             # <<<<<<<<<<<<<<
@@ -1025,7 +1025,7 @@ struct __pyx_obj_11search_tree_ResultsWrapper {
 };
 
 
-/* "search_tree.pyx":37
+/* "search_tree.pyx":38
  *         self.cresults = CSearchResults(num)
  * 
  * cdef class MinMaxStatsList:             # <<<<<<<<<<<<<<
@@ -1038,7 +1038,7 @@ struct __pyx_obj_11search_tree_MinMaxStatsList {
 };
 
 
-/* "search_tree.pyx":49
+/* "search_tree.pyx":50
  *         del self.cmin_max_stats_lst
  * 
  * cdef class Roots:             # <<<<<<<<<<<<<<
@@ -1365,6 +1365,7 @@ static PyTypeObject *__pyx_ptype_11search_tree_MinMaxStatsList = 0;
 static PyTypeObject *__pyx_ptype_11search_tree_Roots = 0;
 static std::vector<float>  __pyx_convert_vector_from_py_float(PyObject *); /*proto*/
 static std::vector<std::vector<float> >  __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(PyObject *); /*proto*/
+static std::vector<int>  __pyx_convert_vector_from_py_int(PyObject *); /*proto*/
 static PyObject *__pyx_convert_vector_to_py_int(const std::vector<int>  &); /*proto*/
 static PyObject *__pyx_convert_vector_to_py_std_3a__3a_vector_3c_int_3e___(const std::vector<std::vector<int> >  &); /*proto*/
 static PyObject *__pyx_convert_vector_to_py_float(const std::vector<float>  &); /*proto*/
@@ -1411,7 +1412,13 @@ static const char __pyx_k_root_num[] = "root_num";
 static const char __pyx_k_setstate[] = "__setstate__";
 static const char __pyx_k_TypeError[] = "TypeError";
 static const char __pyx_k_reduce_ex[] = "__reduce_ex__";
+static const char __pyx_k_time_steps[] = "time_steps";
+static const char __pyx_k_ctime_steps[] = "ctime_steps";
+static const char __pyx_k_full_states[] = "full_states";
+static const char __pyx_k_pre_actions[] = "pre_actions";
 static const char __pyx_k_search_tree[] = "search_tree";
+static const char __pyx_k_cfull_states[] = "cfull_states";
+static const char __pyx_k_cpre_actions[] = "cpre_actions";
 static const char __pyx_k_reduce_cython[] = "__reduce_cython__";
 static const char __pyx_k_ResultsWrapper[] = "ResultsWrapper";
 static const char __pyx_k_batch_traverse[] = "batch_traverse";
@@ -1435,15 +1442,19 @@ static PyObject *__pyx_n_s_batch_backpropagate;
 static PyObject *__pyx_n_s_batch_traverse;
 static PyObject *__pyx_n_s_beta;
 static PyObject *__pyx_n_s_cdones;
+static PyObject *__pyx_n_s_cfull_states;
 static PyObject *__pyx_n_s_cline_in_traceback;
 static PyObject *__pyx_n_s_cmus;
+static PyObject *__pyx_n_s_cpre_actions;
 static PyObject *__pyx_n_s_cpriors;
 static PyObject *__pyx_n_s_crewards;
 static PyObject *__pyx_n_s_cstates;
 static PyObject *__pyx_n_s_cstds;
+static PyObject *__pyx_n_s_ctime_steps;
 static PyObject *__pyx_n_s_cvalues;
 static PyObject *__pyx_n_s_discount_factor;
 static PyObject *__pyx_n_s_dones;
+static PyObject *__pyx_n_s_full_states;
 static PyObject *__pyx_n_s_gamma;
 static PyObject *__pyx_n_s_getstate;
 static PyObject *__pyx_n_s_lambd;
@@ -1456,6 +1467,7 @@ static PyObject *__pyx_n_s_num;
 static PyObject *__pyx_n_s_num_of_sampled_actions;
 static PyObject *__pyx_n_s_num_of_sampled_states;
 static PyObject *__pyx_n_s_policy_logits_pool;
+static PyObject *__pyx_n_s_pre_actions;
 static PyObject *__pyx_n_s_priors;
 static PyObject *__pyx_n_s_range;
 static PyObject *__pyx_n_s_reduce;
@@ -1472,6 +1484,7 @@ static PyObject *__pyx_n_s_setstate_cython;
 static PyObject *__pyx_n_s_states;
 static PyObject *__pyx_n_s_stds;
 static PyObject *__pyx_n_s_test;
+static PyObject *__pyx_n_s_time_steps;
 static PyObject *__pyx_n_s_values;
 static int __pyx_pf_11search_tree_14ResultsWrapper___cinit__(struct __pyx_obj_11search_tree_ResultsWrapper *__pyx_v_self, int __pyx_v_num); /* proto */
 static PyObject *__pyx_pf_11search_tree_14ResultsWrapper_2__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_11search_tree_ResultsWrapper *__pyx_v_self); /* proto */
@@ -1483,7 +1496,7 @@ static PyObject *__pyx_pf_11search_tree_15MinMaxStatsList_6__reduce_cython__(CYT
 static PyObject *__pyx_pf_11search_tree_15MinMaxStatsList_8__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_11search_tree_MinMaxStatsList *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static int __pyx_pf_11search_tree_5Roots___cinit__(CYTHON_UNUSED struct __pyx_obj_11search_tree_Roots *__pyx_v_self); /* proto */
 static int __pyx_pf_11search_tree_5Roots_2__cinit__(struct __pyx_obj_11search_tree_Roots *__pyx_v_self, int __pyx_v_root_num, int __pyx_v_num_of_sampled_actions, int __pyx_v_num_of_sampled_states); /* proto */
-static PyObject *__pyx_pf_11search_tree_5Roots_4prepare(struct __pyx_obj_11search_tree_Roots *__pyx_v_self, PyObject *__pyx_v_priors, PyObject *__pyx_v_states, PyObject *__pyx_v_policy_logits_pool); /* proto */
+static PyObject *__pyx_pf_11search_tree_5Roots_4prepare(struct __pyx_obj_11search_tree_Roots *__pyx_v_self, PyObject *__pyx_v_priors, PyObject *__pyx_v_states, PyObject *__pyx_v_policy_logits_pool, PyObject *__pyx_v_full_states, PyObject *__pyx_v_pre_actions, PyObject *__pyx_v_time_steps); /* proto */
 static PyObject *__pyx_pf_11search_tree_5Roots_6get_distributions(struct __pyx_obj_11search_tree_Roots *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_11search_tree_5Roots_8get_sampled_actions(struct __pyx_obj_11search_tree_Roots *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_11search_tree_5Roots_10get_target_values(struct __pyx_obj_11search_tree_Roots *__pyx_v_self); /* proto */
@@ -1493,7 +1506,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_3num___get__(struct __pyx_obj_11s
 static PyObject *__pyx_pf_11search_tree_5Roots_16__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_11search_tree_Roots *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_11search_tree_5Roots_18__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_11search_tree_Roots *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_11search_tree_batch_traverse(CYTHON_UNUSED PyObject *__pyx_self, struct __pyx_obj_11search_tree_Roots *__pyx_v_roots, float __pyx_v_alpha, float __pyx_v_beta, float __pyx_v_gamma, float __pyx_v_lambd, struct __pyx_obj_11search_tree_MinMaxStatsList *__pyx_v_min_max_stats_lst, struct __pyx_obj_11search_tree_ResultsWrapper *__pyx_v_results); /* proto */
-static PyObject *__pyx_pf_11search_tree_2batch_backpropagate(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_priors, PyObject *__pyx_v_states, float __pyx_v_discount_factor, PyObject *__pyx_v_rewards, PyObject *__pyx_v_values, PyObject *__pyx_v_dones, PyObject *__pyx_v_mus, PyObject *__pyx_v_stds, struct __pyx_obj_11search_tree_MinMaxStatsList *__pyx_v_min_max_stats_lst, struct __pyx_obj_11search_tree_ResultsWrapper *__pyx_v_results); /* proto */
+static PyObject *__pyx_pf_11search_tree_2batch_backpropagate(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_priors, PyObject *__pyx_v_states, PyObject *__pyx_v_full_states, PyObject *__pyx_v_pre_actions, PyObject *__pyx_v_time_steps, float __pyx_v_discount_factor, PyObject *__pyx_v_rewards, PyObject *__pyx_v_values, PyObject *__pyx_v_dones, PyObject *__pyx_v_mus, PyObject *__pyx_v_stds, struct __pyx_obj_11search_tree_MinMaxStatsList *__pyx_v_min_max_stats_lst, struct __pyx_obj_11search_tree_ResultsWrapper *__pyx_v_results); /* proto */
 static PyObject *__pyx_tp_new_11search_tree_ResultsWrapper(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_11search_tree_MinMaxStatsList(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_11search_tree_Roots(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
@@ -1509,7 +1522,7 @@ static PyObject *__pyx_codeobj__8;
 static PyObject *__pyx_codeobj__10;
 /* Late includes */
 
-/* "search_tree.pyx":34
+/* "search_tree.pyx":35
  *     cdef CSearchResults cresults
  * 
  *     def __cinit__(self, int num):             # <<<<<<<<<<<<<<
@@ -1546,18 +1559,18 @@ static int __pyx_pw_11search_tree_14ResultsWrapper_1__cinit__(PyObject *__pyx_v_
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(1, 34, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(1, 35, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
     }
-    __pyx_v_num = __Pyx_PyInt_As_int(values[0]); if (unlikely((__pyx_v_num == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 34, __pyx_L3_error)
+    __pyx_v_num = __Pyx_PyInt_As_int(values[0]); if (unlikely((__pyx_v_num == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 35, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 34, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 35, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("search_tree.ResultsWrapper.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -1575,7 +1588,7 @@ static int __pyx_pf_11search_tree_14ResultsWrapper___cinit__(struct __pyx_obj_11
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "search_tree.pyx":35
+  /* "search_tree.pyx":36
  * 
  *     def __cinit__(self, int num):
  *         self.cresults = CSearchResults(num)             # <<<<<<<<<<<<<<
@@ -1584,7 +1597,7 @@ static int __pyx_pf_11search_tree_14ResultsWrapper___cinit__(struct __pyx_obj_11
  */
   __pyx_v_self->cresults = CSearchResults(__pyx_v_num);
 
-  /* "search_tree.pyx":34
+  /* "search_tree.pyx":35
  *     cdef CSearchResults cresults
  * 
  *     def __cinit__(self, int num):             # <<<<<<<<<<<<<<
@@ -1711,7 +1724,7 @@ static PyObject *__pyx_pf_11search_tree_14ResultsWrapper_4__setstate_cython__(CY
   return __pyx_r;
 }
 
-/* "search_tree.pyx":40
+/* "search_tree.pyx":41
  *     cdef CMinMaxStatsList *cmin_max_stats_lst
  * 
  *     def __cinit__(self, int num):             # <<<<<<<<<<<<<<
@@ -1748,18 +1761,18 @@ static int __pyx_pw_11search_tree_15MinMaxStatsList_1__cinit__(PyObject *__pyx_v
         else goto __pyx_L5_argtuple_error;
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(1, 40, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(1, 41, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 1) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
     }
-    __pyx_v_num = __Pyx_PyInt_As_int(values[0]); if (unlikely((__pyx_v_num == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 40, __pyx_L3_error)
+    __pyx_v_num = __Pyx_PyInt_As_int(values[0]); if (unlikely((__pyx_v_num == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 41, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 40, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 1, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 41, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("search_tree.MinMaxStatsList.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -1777,7 +1790,7 @@ static int __pyx_pf_11search_tree_15MinMaxStatsList___cinit__(struct __pyx_obj_1
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "search_tree.pyx":41
+  /* "search_tree.pyx":42
  * 
  *     def __cinit__(self, int num):
  *         self.cmin_max_stats_lst = new CMinMaxStatsList(num)             # <<<<<<<<<<<<<<
@@ -1786,7 +1799,7 @@ static int __pyx_pf_11search_tree_15MinMaxStatsList___cinit__(struct __pyx_obj_1
  */
   __pyx_v_self->cmin_max_stats_lst = new CMinMaxStatsList(__pyx_v_num);
 
-  /* "search_tree.pyx":40
+  /* "search_tree.pyx":41
  *     cdef CMinMaxStatsList *cmin_max_stats_lst
  * 
  *     def __cinit__(self, int num):             # <<<<<<<<<<<<<<
@@ -1800,7 +1813,7 @@ static int __pyx_pf_11search_tree_15MinMaxStatsList___cinit__(struct __pyx_obj_1
   return __pyx_r;
 }
 
-/* "search_tree.pyx":43
+/* "search_tree.pyx":44
  *         self.cmin_max_stats_lst = new CMinMaxStatsList(num)
  * 
  *     def set_delta(self, float value_delta_max):             # <<<<<<<<<<<<<<
@@ -1819,7 +1832,7 @@ static PyObject *__pyx_pw_11search_tree_15MinMaxStatsList_3set_delta(PyObject *_
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("set_delta (wrapper)", 0);
   assert(__pyx_arg_value_delta_max); {
-    __pyx_v_value_delta_max = __pyx_PyFloat_AsFloat(__pyx_arg_value_delta_max); if (unlikely((__pyx_v_value_delta_max == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 43, __pyx_L3_error)
+    __pyx_v_value_delta_max = __pyx_PyFloat_AsFloat(__pyx_arg_value_delta_max); if (unlikely((__pyx_v_value_delta_max == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 44, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -1839,7 +1852,7 @@ static PyObject *__pyx_pf_11search_tree_15MinMaxStatsList_2set_delta(struct __py
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("set_delta", 0);
 
-  /* "search_tree.pyx":44
+  /* "search_tree.pyx":45
  * 
  *     def set_delta(self, float value_delta_max):
  *         self.cmin_max_stats_lst[0].set_delta(value_delta_max)             # <<<<<<<<<<<<<<
@@ -1848,7 +1861,7 @@ static PyObject *__pyx_pf_11search_tree_15MinMaxStatsList_2set_delta(struct __py
  */
   (__pyx_v_self->cmin_max_stats_lst[0]).set_delta(__pyx_v_value_delta_max);
 
-  /* "search_tree.pyx":43
+  /* "search_tree.pyx":44
  *         self.cmin_max_stats_lst = new CMinMaxStatsList(num)
  * 
  *     def set_delta(self, float value_delta_max):             # <<<<<<<<<<<<<<
@@ -1863,7 +1876,7 @@ static PyObject *__pyx_pf_11search_tree_15MinMaxStatsList_2set_delta(struct __py
   return __pyx_r;
 }
 
-/* "search_tree.pyx":46
+/* "search_tree.pyx":47
  *         self.cmin_max_stats_lst[0].set_delta(value_delta_max)
  * 
  *     def __dealloc__(self):             # <<<<<<<<<<<<<<
@@ -1886,7 +1899,7 @@ static void __pyx_pf_11search_tree_15MinMaxStatsList_4__dealloc__(struct __pyx_o
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__dealloc__", 0);
 
-  /* "search_tree.pyx":47
+  /* "search_tree.pyx":48
  * 
  *     def __dealloc__(self):
  *         del self.cmin_max_stats_lst             # <<<<<<<<<<<<<<
@@ -1895,7 +1908,7 @@ static void __pyx_pf_11search_tree_15MinMaxStatsList_4__dealloc__(struct __pyx_o
  */
   delete __pyx_v_self->cmin_max_stats_lst;
 
-  /* "search_tree.pyx":46
+  /* "search_tree.pyx":47
  *         self.cmin_max_stats_lst[0].set_delta(value_delta_max)
  * 
  *     def __dealloc__(self):             # <<<<<<<<<<<<<<
@@ -2020,7 +2033,7 @@ static PyObject *__pyx_pf_11search_tree_15MinMaxStatsList_8__setstate_cython__(C
   return __pyx_r;
 }
 
-/* "search_tree.pyx":53
+/* "search_tree.pyx":54
  *     cdef CRoots *roots
  * 
  *     def __cinit__(self):             # <<<<<<<<<<<<<<
@@ -2055,7 +2068,7 @@ static int __pyx_pf_11search_tree_5Roots___cinit__(CYTHON_UNUSED struct __pyx_ob
   return __pyx_r;
 }
 
-/* "search_tree.pyx":56
+/* "search_tree.pyx":57
  *         pass
  * 
  *     def __cinit__(self, int root_num, int num_of_sampled_actions, int num_of_sampled_states):             # <<<<<<<<<<<<<<
@@ -2100,17 +2113,17 @@ static int __pyx_pw_11search_tree_5Roots_3__cinit__(PyObject *__pyx_v_self, PyOb
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_num_of_sampled_actions)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 3, 3, 1); __PYX_ERR(1, 56, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 3, 3, 1); __PYX_ERR(1, 57, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
         if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_num_of_sampled_states)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 3, 3, 2); __PYX_ERR(1, 56, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 3, 3, 2); __PYX_ERR(1, 57, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(1, 56, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(1, 57, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 3) {
       goto __pyx_L5_argtuple_error;
@@ -2119,13 +2132,13 @@ static int __pyx_pw_11search_tree_5Roots_3__cinit__(PyObject *__pyx_v_self, PyOb
       values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
       values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
     }
-    __pyx_v_root_num = __Pyx_PyInt_As_int(values[0]); if (unlikely((__pyx_v_root_num == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 56, __pyx_L3_error)
-    __pyx_v_num_of_sampled_actions = __Pyx_PyInt_As_int(values[1]); if (unlikely((__pyx_v_num_of_sampled_actions == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 56, __pyx_L3_error)
-    __pyx_v_num_of_sampled_states = __Pyx_PyInt_As_int(values[2]); if (unlikely((__pyx_v_num_of_sampled_states == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 56, __pyx_L3_error)
+    __pyx_v_root_num = __Pyx_PyInt_As_int(values[0]); if (unlikely((__pyx_v_root_num == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 57, __pyx_L3_error)
+    __pyx_v_num_of_sampled_actions = __Pyx_PyInt_As_int(values[1]); if (unlikely((__pyx_v_num_of_sampled_actions == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 57, __pyx_L3_error)
+    __pyx_v_num_of_sampled_states = __Pyx_PyInt_As_int(values[2]); if (unlikely((__pyx_v_num_of_sampled_states == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 57, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 3, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 56, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 3, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 57, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("search_tree.Roots.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -2143,7 +2156,7 @@ static int __pyx_pf_11search_tree_5Roots_2__cinit__(struct __pyx_obj_11search_tr
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "search_tree.pyx":57
+  /* "search_tree.pyx":58
  * 
  *     def __cinit__(self, int root_num, int num_of_sampled_actions, int num_of_sampled_states):
  *         self.root_num = root_num             # <<<<<<<<<<<<<<
@@ -2152,16 +2165,16 @@ static int __pyx_pf_11search_tree_5Roots_2__cinit__(struct __pyx_obj_11search_tr
  */
   __pyx_v_self->root_num = __pyx_v_root_num;
 
-  /* "search_tree.pyx":58
+  /* "search_tree.pyx":59
  *     def __cinit__(self, int root_num, int num_of_sampled_actions, int num_of_sampled_states):
  *         self.root_num = root_num
  *         self.roots = new CRoots(root_num, num_of_sampled_actions, num_of_sampled_states)             # <<<<<<<<<<<<<<
  * 
- *     def prepare(self, list priors, list states, list policy_logits_pool):
+ *     def prepare(self, list priors, list states, list policy_logits_pool, list full_states, list pre_actions, list time_steps):
  */
   __pyx_v_self->roots = new CRoots(__pyx_v_root_num, __pyx_v_num_of_sampled_actions, __pyx_v_num_of_sampled_states);
 
-  /* "search_tree.pyx":56
+  /* "search_tree.pyx":57
  *         pass
  * 
  *     def __cinit__(self, int root_num, int num_of_sampled_actions, int num_of_sampled_states):             # <<<<<<<<<<<<<<
@@ -2175,11 +2188,11 @@ static int __pyx_pf_11search_tree_5Roots_2__cinit__(struct __pyx_obj_11search_tr
   return __pyx_r;
 }
 
-/* "search_tree.pyx":60
+/* "search_tree.pyx":61
  *         self.roots = new CRoots(root_num, num_of_sampled_actions, num_of_sampled_states)
  * 
- *     def prepare(self, list priors, list states, list policy_logits_pool):             # <<<<<<<<<<<<<<
- *         self.roots[0].prepare(priors, states, policy_logits_pool[0], policy_logits_pool[1])
+ *     def prepare(self, list priors, list states, list policy_logits_pool, list full_states, list pre_actions, list time_steps):             # <<<<<<<<<<<<<<
+ *         self.roots[0].prepare(priors, states, policy_logits_pool[0], policy_logits_pool[1], full_states, pre_actions, time_steps)
  * 
  */
 
@@ -2189,6 +2202,9 @@ static PyObject *__pyx_pw_11search_tree_5Roots_5prepare(PyObject *__pyx_v_self, 
   PyObject *__pyx_v_priors = 0;
   PyObject *__pyx_v_states = 0;
   PyObject *__pyx_v_policy_logits_pool = 0;
+  PyObject *__pyx_v_full_states = 0;
+  PyObject *__pyx_v_pre_actions = 0;
+  PyObject *__pyx_v_time_steps = 0;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -2196,12 +2212,18 @@ static PyObject *__pyx_pw_11search_tree_5Roots_5prepare(PyObject *__pyx_v_self, 
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("prepare (wrapper)", 0);
   {
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_priors,&__pyx_n_s_states,&__pyx_n_s_policy_logits_pool,0};
-    PyObject* values[3] = {0,0,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_priors,&__pyx_n_s_states,&__pyx_n_s_policy_logits_pool,&__pyx_n_s_full_states,&__pyx_n_s_pre_actions,&__pyx_n_s_time_steps,0};
+    PyObject* values[6] = {0,0,0,0,0,0};
     if (unlikely(__pyx_kwds)) {
       Py_ssize_t kw_args;
       const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
       switch (pos_args) {
+        case  6: values[5] = PyTuple_GET_ITEM(__pyx_args, 5);
+        CYTHON_FALLTHROUGH;
+        case  5: values[4] = PyTuple_GET_ITEM(__pyx_args, 4);
+        CYTHON_FALLTHROUGH;
+        case  4: values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
+        CYTHON_FALLTHROUGH;
         case  3: values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
         CYTHON_FALLTHROUGH;
         case  2: values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
@@ -2220,41 +2242,68 @@ static PyObject *__pyx_pw_11search_tree_5Roots_5prepare(PyObject *__pyx_v_self, 
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_states)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("prepare", 1, 3, 3, 1); __PYX_ERR(1, 60, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("prepare", 1, 6, 6, 1); __PYX_ERR(1, 61, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
         if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_policy_logits_pool)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("prepare", 1, 3, 3, 2); __PYX_ERR(1, 60, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("prepare", 1, 6, 6, 2); __PYX_ERR(1, 61, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case  3:
+        if (likely((values[3] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_full_states)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("prepare", 1, 6, 6, 3); __PYX_ERR(1, 61, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case  4:
+        if (likely((values[4] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_pre_actions)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("prepare", 1, 6, 6, 4); __PYX_ERR(1, 61, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case  5:
+        if (likely((values[5] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_time_steps)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("prepare", 1, 6, 6, 5); __PYX_ERR(1, 61, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "prepare") < 0)) __PYX_ERR(1, 60, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "prepare") < 0)) __PYX_ERR(1, 61, __pyx_L3_error)
       }
-    } else if (PyTuple_GET_SIZE(__pyx_args) != 3) {
+    } else if (PyTuple_GET_SIZE(__pyx_args) != 6) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
       values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
       values[2] = PyTuple_GET_ITEM(__pyx_args, 2);
+      values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
+      values[4] = PyTuple_GET_ITEM(__pyx_args, 4);
+      values[5] = PyTuple_GET_ITEM(__pyx_args, 5);
     }
     __pyx_v_priors = ((PyObject*)values[0]);
     __pyx_v_states = ((PyObject*)values[1]);
     __pyx_v_policy_logits_pool = ((PyObject*)values[2]);
+    __pyx_v_full_states = ((PyObject*)values[3]);
+    __pyx_v_pre_actions = ((PyObject*)values[4]);
+    __pyx_v_time_steps = ((PyObject*)values[5]);
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("prepare", 1, 3, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 60, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("prepare", 1, 6, 6, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 61, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("search_tree.Roots.prepare", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_priors), (&PyList_Type), 1, "priors", 1))) __PYX_ERR(1, 60, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_states), (&PyList_Type), 1, "states", 1))) __PYX_ERR(1, 60, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_policy_logits_pool), (&PyList_Type), 1, "policy_logits_pool", 1))) __PYX_ERR(1, 60, __pyx_L1_error)
-  __pyx_r = __pyx_pf_11search_tree_5Roots_4prepare(((struct __pyx_obj_11search_tree_Roots *)__pyx_v_self), __pyx_v_priors, __pyx_v_states, __pyx_v_policy_logits_pool);
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_priors), (&PyList_Type), 1, "priors", 1))) __PYX_ERR(1, 61, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_states), (&PyList_Type), 1, "states", 1))) __PYX_ERR(1, 61, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_policy_logits_pool), (&PyList_Type), 1, "policy_logits_pool", 1))) __PYX_ERR(1, 61, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_full_states), (&PyList_Type), 1, "full_states", 1))) __PYX_ERR(1, 61, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_pre_actions), (&PyList_Type), 1, "pre_actions", 1))) __PYX_ERR(1, 61, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_time_steps), (&PyList_Type), 1, "time_steps", 1))) __PYX_ERR(1, 61, __pyx_L1_error)
+  __pyx_r = __pyx_pf_11search_tree_5Roots_4prepare(((struct __pyx_obj_11search_tree_Roots *)__pyx_v_self), __pyx_v_priors, __pyx_v_states, __pyx_v_policy_logits_pool, __pyx_v_full_states, __pyx_v_pre_actions, __pyx_v_time_steps);
 
   /* function exit code */
   goto __pyx_L0;
@@ -2265,7 +2314,7 @@ static PyObject *__pyx_pw_11search_tree_5Roots_5prepare(PyObject *__pyx_v_self, 
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11search_tree_5Roots_4prepare(struct __pyx_obj_11search_tree_Roots *__pyx_v_self, PyObject *__pyx_v_priors, PyObject *__pyx_v_states, PyObject *__pyx_v_policy_logits_pool) {
+static PyObject *__pyx_pf_11search_tree_5Roots_4prepare(struct __pyx_obj_11search_tree_Roots *__pyx_v_self, PyObject *__pyx_v_priors, PyObject *__pyx_v_states, PyObject *__pyx_v_policy_logits_pool, PyObject *__pyx_v_full_states, PyObject *__pyx_v_pre_actions, PyObject *__pyx_v_time_steps) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   std::vector<std::vector<float> >  __pyx_t_1;
@@ -2273,43 +2322,49 @@ static PyObject *__pyx_pf_11search_tree_5Roots_4prepare(struct __pyx_obj_11searc
   PyObject *__pyx_t_3 = NULL;
   std::vector<std::vector<float> >  __pyx_t_4;
   std::vector<std::vector<float> >  __pyx_t_5;
+  std::vector<std::vector<float> >  __pyx_t_6;
+  std::vector<std::vector<float> >  __pyx_t_7;
+  std::vector<int>  __pyx_t_8;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("prepare", 0);
 
-  /* "search_tree.pyx":61
+  /* "search_tree.pyx":62
  * 
- *     def prepare(self, list priors, list states, list policy_logits_pool):
- *         self.roots[0].prepare(priors, states, policy_logits_pool[0], policy_logits_pool[1])             # <<<<<<<<<<<<<<
+ *     def prepare(self, list priors, list states, list policy_logits_pool, list full_states, list pre_actions, list time_steps):
+ *         self.roots[0].prepare(priors, states, policy_logits_pool[0], policy_logits_pool[1], full_states, pre_actions, time_steps)             # <<<<<<<<<<<<<<
  * 
  *     def get_distributions(self):
  */
-  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_priors); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 61, __pyx_L1_error)
-  __pyx_t_2 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_states); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 61, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_priors); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 62, __pyx_L1_error)
+  __pyx_t_2 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_states); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 62, __pyx_L1_error)
   if (unlikely(__pyx_v_policy_logits_pool == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    __PYX_ERR(1, 61, __pyx_L1_error)
+    __PYX_ERR(1, 62, __pyx_L1_error)
   }
-  __pyx_t_3 = __Pyx_GetItemInt_List(__pyx_v_policy_logits_pool, 0, long, 1, __Pyx_PyInt_From_long, 1, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 61, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_GetItemInt_List(__pyx_v_policy_logits_pool, 0, long, 1, __Pyx_PyInt_From_long, 1, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 62, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 61, __pyx_L1_error)
+  __pyx_t_4 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 62, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   if (unlikely(__pyx_v_policy_logits_pool == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
-    __PYX_ERR(1, 61, __pyx_L1_error)
+    __PYX_ERR(1, 62, __pyx_L1_error)
   }
-  __pyx_t_3 = __Pyx_GetItemInt_List(__pyx_v_policy_logits_pool, 1, long, 1, __Pyx_PyInt_From_long, 1, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 61, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_GetItemInt_List(__pyx_v_policy_logits_pool, 1, long, 1, __Pyx_PyInt_From_long, 1, 0, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 62, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_5 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 61, __pyx_L1_error)
+  __pyx_t_5 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_t_3); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 62, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  (__pyx_v_self->roots[0]).prepare(__pyx_t_1, __pyx_t_2, __pyx_t_4, __pyx_t_5);
+  __pyx_t_6 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_full_states); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 62, __pyx_L1_error)
+  __pyx_t_7 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_pre_actions); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 62, __pyx_L1_error)
+  __pyx_t_8 = __pyx_convert_vector_from_py_int(__pyx_v_time_steps); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 62, __pyx_L1_error)
+  (__pyx_v_self->roots[0]).prepare(__pyx_t_1, __pyx_t_2, __pyx_t_4, __pyx_t_5, __pyx_t_6, __pyx_t_7, __pyx_t_8);
 
-  /* "search_tree.pyx":60
+  /* "search_tree.pyx":61
  *         self.roots = new CRoots(root_num, num_of_sampled_actions, num_of_sampled_states)
  * 
- *     def prepare(self, list priors, list states, list policy_logits_pool):             # <<<<<<<<<<<<<<
- *         self.roots[0].prepare(priors, states, policy_logits_pool[0], policy_logits_pool[1])
+ *     def prepare(self, list priors, list states, list policy_logits_pool, list full_states, list pre_actions, list time_steps):             # <<<<<<<<<<<<<<
+ *         self.roots[0].prepare(priors, states, policy_logits_pool[0], policy_logits_pool[1], full_states, pre_actions, time_steps)
  * 
  */
 
@@ -2326,8 +2381,8 @@ static PyObject *__pyx_pf_11search_tree_5Roots_4prepare(struct __pyx_obj_11searc
   return __pyx_r;
 }
 
-/* "search_tree.pyx":63
- *         self.roots[0].prepare(priors, states, policy_logits_pool[0], policy_logits_pool[1])
+/* "search_tree.pyx":64
+ *         self.roots[0].prepare(priors, states, policy_logits_pool[0], policy_logits_pool[1], full_states, pre_actions, time_steps)
  * 
  *     def get_distributions(self):             # <<<<<<<<<<<<<<
  *         return self.roots[0].get_distributions()
@@ -2356,7 +2411,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_6get_distributions(struct __pyx_o
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("get_distributions", 0);
 
-  /* "search_tree.pyx":64
+  /* "search_tree.pyx":65
  * 
  *     def get_distributions(self):
  *         return self.roots[0].get_distributions()             # <<<<<<<<<<<<<<
@@ -2364,14 +2419,14 @@ static PyObject *__pyx_pf_11search_tree_5Roots_6get_distributions(struct __pyx_o
  *     def get_sampled_actions(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_int_3e___((__pyx_v_self->roots[0]).get_distributions()); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 64, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_int_3e___((__pyx_v_self->roots[0]).get_distributions()); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 65, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "search_tree.pyx":63
- *         self.roots[0].prepare(priors, states, policy_logits_pool[0], policy_logits_pool[1])
+  /* "search_tree.pyx":64
+ *         self.roots[0].prepare(priors, states, policy_logits_pool[0], policy_logits_pool[1], full_states, pre_actions, time_steps)
  * 
  *     def get_distributions(self):             # <<<<<<<<<<<<<<
  *         return self.roots[0].get_distributions()
@@ -2389,7 +2444,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_6get_distributions(struct __pyx_o
   return __pyx_r;
 }
 
-/* "search_tree.pyx":66
+/* "search_tree.pyx":67
  *         return self.roots[0].get_distributions()
  * 
  *     def get_sampled_actions(self):             # <<<<<<<<<<<<<<
@@ -2419,7 +2474,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_8get_sampled_actions(struct __pyx
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("get_sampled_actions", 0);
 
-  /* "search_tree.pyx":67
+  /* "search_tree.pyx":68
  * 
  *     def get_sampled_actions(self):
  *         return self.roots[0].get_sampled_actions()             # <<<<<<<<<<<<<<
@@ -2427,13 +2482,13 @@ static PyObject *__pyx_pf_11search_tree_5Roots_8get_sampled_actions(struct __pyx
  *     def get_target_values(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_std_3a__3a_vector_3c_float_3e____3e___((__pyx_v_self->roots[0]).get_sampled_actions()); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 67, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_std_3a__3a_vector_3c_float_3e____3e___((__pyx_v_self->roots[0]).get_sampled_actions()); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "search_tree.pyx":66
+  /* "search_tree.pyx":67
  *         return self.roots[0].get_distributions()
  * 
  *     def get_sampled_actions(self):             # <<<<<<<<<<<<<<
@@ -2452,7 +2507,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_8get_sampled_actions(struct __pyx
   return __pyx_r;
 }
 
-/* "search_tree.pyx":69
+/* "search_tree.pyx":70
  *         return self.roots[0].get_sampled_actions()
  * 
  *     def get_target_values(self):             # <<<<<<<<<<<<<<
@@ -2482,7 +2537,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_10get_target_values(struct __pyx_
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("get_target_values", 0);
 
-  /* "search_tree.pyx":70
+  /* "search_tree.pyx":71
  * 
  *     def get_target_values(self):
  *         return self.roots[0].get_target_values()             # <<<<<<<<<<<<<<
@@ -2490,13 +2545,13 @@ static PyObject *__pyx_pf_11search_tree_5Roots_10get_target_values(struct __pyx_
  *     def get_target_qs(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_convert_vector_to_py_float((__pyx_v_self->roots[0]).get_target_values()); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 70, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_to_py_float((__pyx_v_self->roots[0]).get_target_values()); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 71, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "search_tree.pyx":69
+  /* "search_tree.pyx":70
  *         return self.roots[0].get_sampled_actions()
  * 
  *     def get_target_values(self):             # <<<<<<<<<<<<<<
@@ -2515,7 +2570,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_10get_target_values(struct __pyx_
   return __pyx_r;
 }
 
-/* "search_tree.pyx":72
+/* "search_tree.pyx":73
  *         return self.roots[0].get_target_values()
  * 
  *     def get_target_qs(self):             # <<<<<<<<<<<<<<
@@ -2545,7 +2600,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_12get_target_qs(struct __pyx_obj_
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("get_target_qs", 0);
 
-  /* "search_tree.pyx":73
+  /* "search_tree.pyx":74
  * 
  *     def get_target_qs(self):
  *         return self.roots[0].get_target_qs()             # <<<<<<<<<<<<<<
@@ -2553,13 +2608,13 @@ static PyObject *__pyx_pf_11search_tree_5Roots_12get_target_qs(struct __pyx_obj_
  *     def __dealloc__(self):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_float_3e___((__pyx_v_self->roots[0]).get_target_qs()); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 73, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_float_3e___((__pyx_v_self->roots[0]).get_target_qs()); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 74, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "search_tree.pyx":72
+  /* "search_tree.pyx":73
  *         return self.roots[0].get_target_values()
  * 
  *     def get_target_qs(self):             # <<<<<<<<<<<<<<
@@ -2578,7 +2633,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_12get_target_qs(struct __pyx_obj_
   return __pyx_r;
 }
 
-/* "search_tree.pyx":75
+/* "search_tree.pyx":76
  *         return self.roots[0].get_target_qs()
  * 
  *     def __dealloc__(self):             # <<<<<<<<<<<<<<
@@ -2601,7 +2656,7 @@ static void __pyx_pf_11search_tree_5Roots_14__dealloc__(struct __pyx_obj_11searc
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__dealloc__", 0);
 
-  /* "search_tree.pyx":76
+  /* "search_tree.pyx":77
  * 
  *     def __dealloc__(self):
  *         del self.roots             # <<<<<<<<<<<<<<
@@ -2610,7 +2665,7 @@ static void __pyx_pf_11search_tree_5Roots_14__dealloc__(struct __pyx_obj_11searc
  */
   delete __pyx_v_self->roots;
 
-  /* "search_tree.pyx":75
+  /* "search_tree.pyx":76
  *         return self.roots[0].get_target_qs()
  * 
  *     def __dealloc__(self):             # <<<<<<<<<<<<<<
@@ -2622,7 +2677,7 @@ static void __pyx_pf_11search_tree_5Roots_14__dealloc__(struct __pyx_obj_11searc
   __Pyx_RefNannyFinishContext();
 }
 
-/* "search_tree.pyx":79
+/* "search_tree.pyx":80
  * 
  *     @property
  *     def num(self):             # <<<<<<<<<<<<<<
@@ -2652,7 +2707,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_3num___get__(struct __pyx_obj_11s
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "search_tree.pyx":80
+  /* "search_tree.pyx":81
  *     @property
  *     def num(self):
  *         return self.root_num             # <<<<<<<<<<<<<<
@@ -2660,13 +2715,13 @@ static PyObject *__pyx_pf_11search_tree_5Roots_3num___get__(struct __pyx_obj_11s
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->root_num); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 80, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->root_num); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 81, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "search_tree.pyx":79
+  /* "search_tree.pyx":80
  * 
  *     @property
  *     def num(self):             # <<<<<<<<<<<<<<
@@ -2798,7 +2853,7 @@ static PyObject *__pyx_pf_11search_tree_5Roots_18__setstate_cython__(CYTHON_UNUS
   return __pyx_r;
 }
 
-/* "search_tree.pyx":83
+/* "search_tree.pyx":84
  * 
  * 
  * def batch_traverse(Roots roots, float alpha, float beta, float gamma, float lambd, MinMaxStatsList min_max_stats_lst,             # <<<<<<<<<<<<<<
@@ -2856,41 +2911,41 @@ static PyObject *__pyx_pw_11search_tree_1batch_traverse(PyObject *__pyx_self, Py
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_alpha)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 1); __PYX_ERR(1, 83, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 1); __PYX_ERR(1, 84, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
         if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_beta)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 2); __PYX_ERR(1, 83, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 2); __PYX_ERR(1, 84, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  3:
         if (likely((values[3] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_gamma)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 3); __PYX_ERR(1, 83, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 3); __PYX_ERR(1, 84, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  4:
         if (likely((values[4] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_lambd)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 4); __PYX_ERR(1, 83, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 4); __PYX_ERR(1, 84, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  5:
         if (likely((values[5] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_min_max_stats_lst)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 5); __PYX_ERR(1, 83, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 5); __PYX_ERR(1, 84, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  6:
         if (likely((values[6] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_results)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 6); __PYX_ERR(1, 83, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, 6); __PYX_ERR(1, 84, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "batch_traverse") < 0)) __PYX_ERR(1, 83, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "batch_traverse") < 0)) __PYX_ERR(1, 84, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 7) {
       goto __pyx_L5_argtuple_error;
@@ -2904,24 +2959,24 @@ static PyObject *__pyx_pw_11search_tree_1batch_traverse(PyObject *__pyx_self, Py
       values[6] = PyTuple_GET_ITEM(__pyx_args, 6);
     }
     __pyx_v_roots = ((struct __pyx_obj_11search_tree_Roots *)values[0]);
-    __pyx_v_alpha = __pyx_PyFloat_AsFloat(values[1]); if (unlikely((__pyx_v_alpha == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 83, __pyx_L3_error)
-    __pyx_v_beta = __pyx_PyFloat_AsFloat(values[2]); if (unlikely((__pyx_v_beta == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 83, __pyx_L3_error)
-    __pyx_v_gamma = __pyx_PyFloat_AsFloat(values[3]); if (unlikely((__pyx_v_gamma == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 83, __pyx_L3_error)
-    __pyx_v_lambd = __pyx_PyFloat_AsFloat(values[4]); if (unlikely((__pyx_v_lambd == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 83, __pyx_L3_error)
+    __pyx_v_alpha = __pyx_PyFloat_AsFloat(values[1]); if (unlikely((__pyx_v_alpha == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 84, __pyx_L3_error)
+    __pyx_v_beta = __pyx_PyFloat_AsFloat(values[2]); if (unlikely((__pyx_v_beta == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 84, __pyx_L3_error)
+    __pyx_v_gamma = __pyx_PyFloat_AsFloat(values[3]); if (unlikely((__pyx_v_gamma == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 84, __pyx_L3_error)
+    __pyx_v_lambd = __pyx_PyFloat_AsFloat(values[4]); if (unlikely((__pyx_v_lambd == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 84, __pyx_L3_error)
     __pyx_v_min_max_stats_lst = ((struct __pyx_obj_11search_tree_MinMaxStatsList *)values[5]);
     __pyx_v_results = ((struct __pyx_obj_11search_tree_ResultsWrapper *)values[6]);
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 83, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("batch_traverse", 1, 7, 7, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 84, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("search_tree.batch_traverse", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_roots), __pyx_ptype_11search_tree_Roots, 1, "roots", 0))) __PYX_ERR(1, 83, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_max_stats_lst), __pyx_ptype_11search_tree_MinMaxStatsList, 1, "min_max_stats_lst", 0))) __PYX_ERR(1, 83, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_results), __pyx_ptype_11search_tree_ResultsWrapper, 1, "results", 0))) __PYX_ERR(1, 84, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_roots), __pyx_ptype_11search_tree_Roots, 1, "roots", 0))) __PYX_ERR(1, 84, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_max_stats_lst), __pyx_ptype_11search_tree_MinMaxStatsList, 1, "min_max_stats_lst", 0))) __PYX_ERR(1, 84, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_results), __pyx_ptype_11search_tree_ResultsWrapper, 1, "results", 0))) __PYX_ERR(1, 85, __pyx_L1_error)
   __pyx_r = __pyx_pf_11search_tree_batch_traverse(__pyx_self, __pyx_v_roots, __pyx_v_alpha, __pyx_v_beta, __pyx_v_gamma, __pyx_v_lambd, __pyx_v_min_max_stats_lst, __pyx_v_results);
 
   /* function exit code */
@@ -2941,55 +2996,89 @@ static PyObject *__pyx_pf_11search_tree_batch_traverse(CYTHON_UNUSED PyObject *_
   PyObject *__pyx_t_3 = NULL;
   PyObject *__pyx_t_4 = NULL;
   PyObject *__pyx_t_5 = NULL;
+  PyObject *__pyx_t_6 = NULL;
+  PyObject *__pyx_t_7 = NULL;
+  PyObject *__pyx_t_8 = NULL;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("batch_traverse", 0);
 
-  /* "search_tree.pyx":85
+  /* "search_tree.pyx":86
  * def batch_traverse(Roots roots, float alpha, float beta, float gamma, float lambd, MinMaxStatsList min_max_stats_lst,
  *                    ResultsWrapper results):
  *     cbatch_traverse(roots.roots, alpha, beta, gamma, lambd, min_max_stats_lst.cmin_max_stats_lst, results.cresults)             # <<<<<<<<<<<<<<
  * 
- *     return results.cresults.last_priors, results.cresults.last_states, results.cresults.last_actions, results.cresults.dones
+ *     return results.cresults.last_priors, results.cresults.last_states, results.cresults.last_actions, \
  */
   cbatch_traverse(__pyx_v_roots->roots, __pyx_v_alpha, __pyx_v_beta, __pyx_v_gamma, __pyx_v_lambd, __pyx_v_min_max_stats_lst->cmin_max_stats_lst, __pyx_v_results->cresults);
 
-  /* "search_tree.pyx":87
+  /* "search_tree.pyx":88
  *     cbatch_traverse(roots.roots, alpha, beta, gamma, lambd, min_max_stats_lst.cmin_max_stats_lst, results.cresults)
  * 
- *     return results.cresults.last_priors, results.cresults.last_states, results.cresults.last_actions, results.cresults.dones             # <<<<<<<<<<<<<<
- * 
+ *     return results.cresults.last_priors, results.cresults.last_states, results.cresults.last_actions, \             # <<<<<<<<<<<<<<
+ *            results.cresults.last_full_states, results.cresults.last_pre_actions, results.cresults.last_time_steps, results.cresults.dones
  * 
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_results->cresults.last_priors); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 87, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_results->cresults.last_priors); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_results->cresults.last_states); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 87, __pyx_L1_error)
+  __pyx_t_2 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_results->cresults.last_states); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_results->cresults.last_actions); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 87, __pyx_L1_error)
+  __pyx_t_3 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_results->cresults.last_actions); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __pyx_convert_vector_to_py_bool(__pyx_v_results->cresults.dones); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 87, __pyx_L1_error)
+
+  /* "search_tree.pyx":89
+ * 
+ *     return results.cresults.last_priors, results.cresults.last_states, results.cresults.last_actions, \
+ *            results.cresults.last_full_states, results.cresults.last_pre_actions, results.cresults.last_time_steps, results.cresults.dones             # <<<<<<<<<<<<<<
+ * 
+ * 
+ */
+  __pyx_t_4 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_results->cresults.last_full_states); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = PyTuple_New(4); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 87, __pyx_L1_error)
+  __pyx_t_5 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_results->cresults.last_pre_actions); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 89, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
+  __pyx_t_6 = __pyx_convert_vector_to_py_int(__pyx_v_results->cresults.last_time_steps); if (unlikely(!__pyx_t_6)) __PYX_ERR(1, 89, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __pyx_t_7 = __pyx_convert_vector_to_py_bool(__pyx_v_results->cresults.dones); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 89, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_7);
+
+  /* "search_tree.pyx":88
+ *     cbatch_traverse(roots.roots, alpha, beta, gamma, lambd, min_max_stats_lst.cmin_max_stats_lst, results.cresults)
+ * 
+ *     return results.cresults.last_priors, results.cresults.last_states, results.cresults.last_actions, \             # <<<<<<<<<<<<<<
+ *            results.cresults.last_full_states, results.cresults.last_pre_actions, results.cresults.last_time_steps, results.cresults.dones
+ * 
+ */
+  __pyx_t_8 = PyTuple_New(7); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 88, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_8);
   __Pyx_GIVEREF(__pyx_t_1);
-  PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_1);
+  PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_1);
   __Pyx_GIVEREF(__pyx_t_2);
-  PyTuple_SET_ITEM(__pyx_t_5, 1, __pyx_t_2);
+  PyTuple_SET_ITEM(__pyx_t_8, 1, __pyx_t_2);
   __Pyx_GIVEREF(__pyx_t_3);
-  PyTuple_SET_ITEM(__pyx_t_5, 2, __pyx_t_3);
+  PyTuple_SET_ITEM(__pyx_t_8, 2, __pyx_t_3);
   __Pyx_GIVEREF(__pyx_t_4);
-  PyTuple_SET_ITEM(__pyx_t_5, 3, __pyx_t_4);
+  PyTuple_SET_ITEM(__pyx_t_8, 3, __pyx_t_4);
+  __Pyx_GIVEREF(__pyx_t_5);
+  PyTuple_SET_ITEM(__pyx_t_8, 4, __pyx_t_5);
+  __Pyx_GIVEREF(__pyx_t_6);
+  PyTuple_SET_ITEM(__pyx_t_8, 5, __pyx_t_6);
+  __Pyx_GIVEREF(__pyx_t_7);
+  PyTuple_SET_ITEM(__pyx_t_8, 6, __pyx_t_7);
   __pyx_t_1 = 0;
   __pyx_t_2 = 0;
   __pyx_t_3 = 0;
   __pyx_t_4 = 0;
-  __pyx_r = __pyx_t_5;
   __pyx_t_5 = 0;
+  __pyx_t_6 = 0;
+  __pyx_t_7 = 0;
+  __pyx_r = __pyx_t_8;
+  __pyx_t_8 = 0;
   goto __pyx_L0;
 
-  /* "search_tree.pyx":83
+  /* "search_tree.pyx":84
  * 
  * 
  * def batch_traverse(Roots roots, float alpha, float beta, float gamma, float lambd, MinMaxStatsList min_max_stats_lst,             # <<<<<<<<<<<<<<
@@ -3004,6 +3093,9 @@ static PyObject *__pyx_pf_11search_tree_batch_traverse(CYTHON_UNUSED PyObject *_
   __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_5);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_8);
   __Pyx_AddTraceback("search_tree.batch_traverse", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
@@ -3012,12 +3104,12 @@ static PyObject *__pyx_pf_11search_tree_batch_traverse(CYTHON_UNUSED PyObject *_
   return __pyx_r;
 }
 
-/* "search_tree.pyx":90
+/* "search_tree.pyx":92
  * 
  * 
- * def batch_backpropagate(list priors, list states, float discount_factor, list rewards, list values, list dones, list mus, list stds,             # <<<<<<<<<<<<<<
- *                          MinMaxStatsList min_max_stats_lst, ResultsWrapper results):
- * 
+ * def batch_backpropagate(list priors, list states, list full_states, list pre_actions, list time_steps,             # <<<<<<<<<<<<<<
+ *                         float discount_factor, list rewards, list values, list dones, list mus, list stds,
+ *                         MinMaxStatsList min_max_stats_lst, ResultsWrapper results):
  */
 
 /* Python wrapper */
@@ -3026,6 +3118,9 @@ static PyMethodDef __pyx_mdef_11search_tree_3batch_backpropagate = {"batch_backp
 static PyObject *__pyx_pw_11search_tree_3batch_backpropagate(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyObject *__pyx_v_priors = 0;
   PyObject *__pyx_v_states = 0;
+  PyObject *__pyx_v_full_states = 0;
+  PyObject *__pyx_v_pre_actions = 0;
+  PyObject *__pyx_v_time_steps = 0;
   float __pyx_v_discount_factor;
   PyObject *__pyx_v_rewards = 0;
   PyObject *__pyx_v_values = 0;
@@ -3041,12 +3136,18 @@ static PyObject *__pyx_pw_11search_tree_3batch_backpropagate(PyObject *__pyx_sel
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("batch_backpropagate (wrapper)", 0);
   {
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_priors,&__pyx_n_s_states,&__pyx_n_s_discount_factor,&__pyx_n_s_rewards,&__pyx_n_s_values,&__pyx_n_s_dones,&__pyx_n_s_mus,&__pyx_n_s_stds,&__pyx_n_s_min_max_stats_lst,&__pyx_n_s_results,0};
-    PyObject* values[10] = {0,0,0,0,0,0,0,0,0,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_priors,&__pyx_n_s_states,&__pyx_n_s_full_states,&__pyx_n_s_pre_actions,&__pyx_n_s_time_steps,&__pyx_n_s_discount_factor,&__pyx_n_s_rewards,&__pyx_n_s_values,&__pyx_n_s_dones,&__pyx_n_s_mus,&__pyx_n_s_stds,&__pyx_n_s_min_max_stats_lst,&__pyx_n_s_results,0};
+    PyObject* values[13] = {0,0,0,0,0,0,0,0,0,0,0,0,0};
     if (unlikely(__pyx_kwds)) {
       Py_ssize_t kw_args;
       const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
       switch (pos_args) {
+        case 13: values[12] = PyTuple_GET_ITEM(__pyx_args, 12);
+        CYTHON_FALLTHROUGH;
+        case 12: values[11] = PyTuple_GET_ITEM(__pyx_args, 11);
+        CYTHON_FALLTHROUGH;
+        case 11: values[10] = PyTuple_GET_ITEM(__pyx_args, 10);
+        CYTHON_FALLTHROUGH;
         case 10: values[9] = PyTuple_GET_ITEM(__pyx_args, 9);
         CYTHON_FALLTHROUGH;
         case  9: values[8] = PyTuple_GET_ITEM(__pyx_args, 8);
@@ -3079,61 +3180,79 @@ static PyObject *__pyx_pw_11search_tree_3batch_backpropagate(PyObject *__pyx_sel
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_states)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 10, 10, 1); __PYX_ERR(1, 90, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 1); __PYX_ERR(1, 92, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
-        if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_discount_factor)) != 0)) kw_args--;
+        if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_full_states)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 10, 10, 2); __PYX_ERR(1, 90, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 2); __PYX_ERR(1, 92, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  3:
-        if (likely((values[3] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_rewards)) != 0)) kw_args--;
+        if (likely((values[3] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_pre_actions)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 10, 10, 3); __PYX_ERR(1, 90, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 3); __PYX_ERR(1, 92, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  4:
-        if (likely((values[4] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_values)) != 0)) kw_args--;
+        if (likely((values[4] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_time_steps)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 10, 10, 4); __PYX_ERR(1, 90, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 4); __PYX_ERR(1, 92, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  5:
-        if (likely((values[5] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_dones)) != 0)) kw_args--;
+        if (likely((values[5] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_discount_factor)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 10, 10, 5); __PYX_ERR(1, 90, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 5); __PYX_ERR(1, 92, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  6:
-        if (likely((values[6] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_mus)) != 0)) kw_args--;
+        if (likely((values[6] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_rewards)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 10, 10, 6); __PYX_ERR(1, 90, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 6); __PYX_ERR(1, 92, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  7:
-        if (likely((values[7] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_stds)) != 0)) kw_args--;
+        if (likely((values[7] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_values)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 10, 10, 7); __PYX_ERR(1, 90, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 7); __PYX_ERR(1, 92, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  8:
-        if (likely((values[8] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_min_max_stats_lst)) != 0)) kw_args--;
+        if (likely((values[8] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_dones)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 10, 10, 8); __PYX_ERR(1, 90, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 8); __PYX_ERR(1, 92, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  9:
-        if (likely((values[9] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_results)) != 0)) kw_args--;
+        if (likely((values[9] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_mus)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 10, 10, 9); __PYX_ERR(1, 90, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 9); __PYX_ERR(1, 92, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case 10:
+        if (likely((values[10] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_stds)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 10); __PYX_ERR(1, 92, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case 11:
+        if (likely((values[11] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_min_max_stats_lst)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 11); __PYX_ERR(1, 92, __pyx_L3_error)
+        }
+        CYTHON_FALLTHROUGH;
+        case 12:
+        if (likely((values[12] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_results)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, 12); __PYX_ERR(1, 92, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "batch_backpropagate") < 0)) __PYX_ERR(1, 90, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "batch_backpropagate") < 0)) __PYX_ERR(1, 92, __pyx_L3_error)
       }
-    } else if (PyTuple_GET_SIZE(__pyx_args) != 10) {
+    } else if (PyTuple_GET_SIZE(__pyx_args) != 13) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
@@ -3146,36 +3265,45 @@ static PyObject *__pyx_pw_11search_tree_3batch_backpropagate(PyObject *__pyx_sel
       values[7] = PyTuple_GET_ITEM(__pyx_args, 7);
       values[8] = PyTuple_GET_ITEM(__pyx_args, 8);
       values[9] = PyTuple_GET_ITEM(__pyx_args, 9);
+      values[10] = PyTuple_GET_ITEM(__pyx_args, 10);
+      values[11] = PyTuple_GET_ITEM(__pyx_args, 11);
+      values[12] = PyTuple_GET_ITEM(__pyx_args, 12);
     }
     __pyx_v_priors = ((PyObject*)values[0]);
     __pyx_v_states = ((PyObject*)values[1]);
-    __pyx_v_discount_factor = __pyx_PyFloat_AsFloat(values[2]); if (unlikely((__pyx_v_discount_factor == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 90, __pyx_L3_error)
-    __pyx_v_rewards = ((PyObject*)values[3]);
-    __pyx_v_values = ((PyObject*)values[4]);
-    __pyx_v_dones = ((PyObject*)values[5]);
-    __pyx_v_mus = ((PyObject*)values[6]);
-    __pyx_v_stds = ((PyObject*)values[7]);
-    __pyx_v_min_max_stats_lst = ((struct __pyx_obj_11search_tree_MinMaxStatsList *)values[8]);
-    __pyx_v_results = ((struct __pyx_obj_11search_tree_ResultsWrapper *)values[9]);
+    __pyx_v_full_states = ((PyObject*)values[2]);
+    __pyx_v_pre_actions = ((PyObject*)values[3]);
+    __pyx_v_time_steps = ((PyObject*)values[4]);
+    __pyx_v_discount_factor = __pyx_PyFloat_AsFloat(values[5]); if (unlikely((__pyx_v_discount_factor == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 93, __pyx_L3_error)
+    __pyx_v_rewards = ((PyObject*)values[6]);
+    __pyx_v_values = ((PyObject*)values[7]);
+    __pyx_v_dones = ((PyObject*)values[8]);
+    __pyx_v_mus = ((PyObject*)values[9]);
+    __pyx_v_stds = ((PyObject*)values[10]);
+    __pyx_v_min_max_stats_lst = ((struct __pyx_obj_11search_tree_MinMaxStatsList *)values[11]);
+    __pyx_v_results = ((struct __pyx_obj_11search_tree_ResultsWrapper *)values[12]);
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 10, 10, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 90, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("batch_backpropagate", 1, 13, 13, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 92, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("search_tree.batch_backpropagate", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_priors), (&PyList_Type), 1, "priors", 1))) __PYX_ERR(1, 90, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_states), (&PyList_Type), 1, "states", 1))) __PYX_ERR(1, 90, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_rewards), (&PyList_Type), 1, "rewards", 1))) __PYX_ERR(1, 90, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_values), (&PyList_Type), 1, "values", 1))) __PYX_ERR(1, 90, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_dones), (&PyList_Type), 1, "dones", 1))) __PYX_ERR(1, 90, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_mus), (&PyList_Type), 1, "mus", 1))) __PYX_ERR(1, 90, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_stds), (&PyList_Type), 1, "stds", 1))) __PYX_ERR(1, 90, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_max_stats_lst), __pyx_ptype_11search_tree_MinMaxStatsList, 1, "min_max_stats_lst", 0))) __PYX_ERR(1, 91, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_results), __pyx_ptype_11search_tree_ResultsWrapper, 1, "results", 0))) __PYX_ERR(1, 91, __pyx_L1_error)
-  __pyx_r = __pyx_pf_11search_tree_2batch_backpropagate(__pyx_self, __pyx_v_priors, __pyx_v_states, __pyx_v_discount_factor, __pyx_v_rewards, __pyx_v_values, __pyx_v_dones, __pyx_v_mus, __pyx_v_stds, __pyx_v_min_max_stats_lst, __pyx_v_results);
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_priors), (&PyList_Type), 1, "priors", 1))) __PYX_ERR(1, 92, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_states), (&PyList_Type), 1, "states", 1))) __PYX_ERR(1, 92, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_full_states), (&PyList_Type), 1, "full_states", 1))) __PYX_ERR(1, 92, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_pre_actions), (&PyList_Type), 1, "pre_actions", 1))) __PYX_ERR(1, 92, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_time_steps), (&PyList_Type), 1, "time_steps", 1))) __PYX_ERR(1, 92, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_rewards), (&PyList_Type), 1, "rewards", 1))) __PYX_ERR(1, 93, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_values), (&PyList_Type), 1, "values", 1))) __PYX_ERR(1, 93, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_dones), (&PyList_Type), 1, "dones", 1))) __PYX_ERR(1, 93, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_mus), (&PyList_Type), 1, "mus", 1))) __PYX_ERR(1, 93, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_stds), (&PyList_Type), 1, "stds", 1))) __PYX_ERR(1, 93, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_min_max_stats_lst), __pyx_ptype_11search_tree_MinMaxStatsList, 1, "min_max_stats_lst", 0))) __PYX_ERR(1, 94, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_results), __pyx_ptype_11search_tree_ResultsWrapper, 1, "results", 0))) __PYX_ERR(1, 94, __pyx_L1_error)
+  __pyx_r = __pyx_pf_11search_tree_2batch_backpropagate(__pyx_self, __pyx_v_priors, __pyx_v_states, __pyx_v_full_states, __pyx_v_pre_actions, __pyx_v_time_steps, __pyx_v_discount_factor, __pyx_v_rewards, __pyx_v_values, __pyx_v_dones, __pyx_v_mus, __pyx_v_stds, __pyx_v_min_max_stats_lst, __pyx_v_results);
 
   /* function exit code */
   goto __pyx_L0;
@@ -3186,9 +3314,12 @@ static PyObject *__pyx_pw_11search_tree_3batch_backpropagate(PyObject *__pyx_sel
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11search_tree_2batch_backpropagate(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_priors, PyObject *__pyx_v_states, float __pyx_v_discount_factor, PyObject *__pyx_v_rewards, PyObject *__pyx_v_values, PyObject *__pyx_v_dones, PyObject *__pyx_v_mus, PyObject *__pyx_v_stds, struct __pyx_obj_11search_tree_MinMaxStatsList *__pyx_v_min_max_stats_lst, struct __pyx_obj_11search_tree_ResultsWrapper *__pyx_v_results) {
+static PyObject *__pyx_pf_11search_tree_2batch_backpropagate(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_priors, PyObject *__pyx_v_states, PyObject *__pyx_v_full_states, PyObject *__pyx_v_pre_actions, PyObject *__pyx_v_time_steps, float __pyx_v_discount_factor, PyObject *__pyx_v_rewards, PyObject *__pyx_v_values, PyObject *__pyx_v_dones, PyObject *__pyx_v_mus, PyObject *__pyx_v_stds, struct __pyx_obj_11search_tree_MinMaxStatsList *__pyx_v_min_max_stats_lst, struct __pyx_obj_11search_tree_ResultsWrapper *__pyx_v_results) {
   std::vector<std::vector<float> >  __pyx_v_cpriors;
   std::vector<std::vector<float> >  __pyx_v_cstates;
+  std::vector<std::vector<float> >  __pyx_v_cfull_states;
+  std::vector<std::vector<float> >  __pyx_v_cpre_actions;
+  std::vector<int>  __pyx_v_ctime_steps;
   std::vector<float>  __pyx_v_crewards;
   std::vector<float>  __pyx_v_cvalues;
   std::vector<bool>  __pyx_v_cdones;
@@ -3197,97 +3328,129 @@ static PyObject *__pyx_pf_11search_tree_2batch_backpropagate(CYTHON_UNUSED PyObj
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   std::vector<std::vector<float> >  __pyx_t_1;
-  std::vector<float>  __pyx_t_2;
-  std::vector<bool>  __pyx_t_3;
+  std::vector<int>  __pyx_t_2;
+  std::vector<float>  __pyx_t_3;
+  std::vector<bool>  __pyx_t_4;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("batch_backpropagate", 0);
 
-  /* "search_tree.pyx":93
- *                          MinMaxStatsList min_max_stats_lst, ResultsWrapper results):
+  /* "search_tree.pyx":96
+ *                         MinMaxStatsList min_max_stats_lst, ResultsWrapper results):
  * 
  *     cdef vector[vector[float]] cpriors = priors             # <<<<<<<<<<<<<<
  *     cdef vector[vector[float]] cstates = states
- *     cdef vector[float] crewards = rewards
+ * 
  */
-  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_priors); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 93, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_priors); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 96, __pyx_L1_error)
   __pyx_v_cpriors = __pyx_t_1;
 
-  /* "search_tree.pyx":94
+  /* "search_tree.pyx":97
  * 
  *     cdef vector[vector[float]] cpriors = priors
  *     cdef vector[vector[float]] cstates = states             # <<<<<<<<<<<<<<
- *     cdef vector[float] crewards = rewards
- *     cdef vector[float] cvalues = values
+ * 
+ *     cdef vector[vector[float]] cfull_states = full_states
  */
-  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_states); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 94, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_states); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 97, __pyx_L1_error)
   __pyx_v_cstates = __pyx_t_1;
 
-  /* "search_tree.pyx":95
- *     cdef vector[vector[float]] cpriors = priors
+  /* "search_tree.pyx":99
  *     cdef vector[vector[float]] cstates = states
+ * 
+ *     cdef vector[vector[float]] cfull_states = full_states             # <<<<<<<<<<<<<<
+ *     cdef vector[vector[float]] cpre_actions = pre_actions
+ *     cdef vector[int] ctime_steps = time_steps
+ */
+  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_full_states); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 99, __pyx_L1_error)
+  __pyx_v_cfull_states = __pyx_t_1;
+
+  /* "search_tree.pyx":100
+ * 
+ *     cdef vector[vector[float]] cfull_states = full_states
+ *     cdef vector[vector[float]] cpre_actions = pre_actions             # <<<<<<<<<<<<<<
+ *     cdef vector[int] ctime_steps = time_steps
+ * 
+ */
+  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_pre_actions); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 100, __pyx_L1_error)
+  __pyx_v_cpre_actions = __pyx_t_1;
+
+  /* "search_tree.pyx":101
+ *     cdef vector[vector[float]] cfull_states = full_states
+ *     cdef vector[vector[float]] cpre_actions = pre_actions
+ *     cdef vector[int] ctime_steps = time_steps             # <<<<<<<<<<<<<<
+ * 
+ *     cdef vector[float] crewards = rewards
+ */
+  __pyx_t_2 = __pyx_convert_vector_from_py_int(__pyx_v_time_steps); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 101, __pyx_L1_error)
+  __pyx_v_ctime_steps = __pyx_t_2;
+
+  /* "search_tree.pyx":103
+ *     cdef vector[int] ctime_steps = time_steps
+ * 
  *     cdef vector[float] crewards = rewards             # <<<<<<<<<<<<<<
  *     cdef vector[float] cvalues = values
  *     cdef vector[bool] cdones = dones
  */
-  __pyx_t_2 = __pyx_convert_vector_from_py_float(__pyx_v_rewards); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 95, __pyx_L1_error)
-  __pyx_v_crewards = __pyx_t_2;
+  __pyx_t_3 = __pyx_convert_vector_from_py_float(__pyx_v_rewards); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 103, __pyx_L1_error)
+  __pyx_v_crewards = __pyx_t_3;
 
-  /* "search_tree.pyx":96
- *     cdef vector[vector[float]] cstates = states
+  /* "search_tree.pyx":104
+ * 
  *     cdef vector[float] crewards = rewards
  *     cdef vector[float] cvalues = values             # <<<<<<<<<<<<<<
  *     cdef vector[bool] cdones = dones
  *     cdef vector[vector[float]] cmus = mus
  */
-  __pyx_t_2 = __pyx_convert_vector_from_py_float(__pyx_v_values); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 96, __pyx_L1_error)
-  __pyx_v_cvalues = __pyx_t_2;
+  __pyx_t_3 = __pyx_convert_vector_from_py_float(__pyx_v_values); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 104, __pyx_L1_error)
+  __pyx_v_cvalues = __pyx_t_3;
 
-  /* "search_tree.pyx":97
+  /* "search_tree.pyx":105
  *     cdef vector[float] crewards = rewards
  *     cdef vector[float] cvalues = values
  *     cdef vector[bool] cdones = dones             # <<<<<<<<<<<<<<
  *     cdef vector[vector[float]] cmus = mus
  *     cdef vector[vector[float]] cstds = stds
  */
-  __pyx_t_3 = __pyx_convert_vector_from_py_bool(__pyx_v_dones); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 97, __pyx_L1_error)
-  __pyx_v_cdones = __pyx_t_3;
+  __pyx_t_4 = __pyx_convert_vector_from_py_bool(__pyx_v_dones); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 105, __pyx_L1_error)
+  __pyx_v_cdones = __pyx_t_4;
 
-  /* "search_tree.pyx":98
+  /* "search_tree.pyx":106
  *     cdef vector[float] cvalues = values
  *     cdef vector[bool] cdones = dones
  *     cdef vector[vector[float]] cmus = mus             # <<<<<<<<<<<<<<
  *     cdef vector[vector[float]] cstds = stds
  * 
  */
-  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_mus); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 98, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_mus); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 106, __pyx_L1_error)
   __pyx_v_cmus = __pyx_t_1;
 
-  /* "search_tree.pyx":99
+  /* "search_tree.pyx":107
  *     cdef vector[bool] cdones = dones
  *     cdef vector[vector[float]] cmus = mus
  *     cdef vector[vector[float]] cstds = stds             # <<<<<<<<<<<<<<
  * 
- *     cbatch_backpropagate(cpriors, cstates, discount_factor, crewards, cvalues, cdones, cmus, cstds,
+ *     cbatch_backpropagate(cpriors, cstates, cfull_states, cpre_actions, ctime_steps,
  */
-  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_stds); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 99, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___(__pyx_v_stds); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 107, __pyx_L1_error)
   __pyx_v_cstds = __pyx_t_1;
 
-  /* "search_tree.pyx":101
+  /* "search_tree.pyx":109
  *     cdef vector[vector[float]] cstds = stds
  * 
- *     cbatch_backpropagate(cpriors, cstates, discount_factor, crewards, cvalues, cdones, cmus, cstds,             # <<<<<<<<<<<<<<
- *                           min_max_stats_lst.cmin_max_stats_lst, results.cresults)
+ *     cbatch_backpropagate(cpriors, cstates, cfull_states, cpre_actions, ctime_steps,             # <<<<<<<<<<<<<<
+ *                          discount_factor, crewards, cvalues, cdones, cmus, cstds,
+ *                          min_max_stats_lst.cmin_max_stats_lst, results.cresults)
  */
-  cbatch_backpropagate(__pyx_v_cpriors, __pyx_v_cstates, __pyx_v_discount_factor, __pyx_v_crewards, __pyx_v_cvalues, __pyx_v_cdones, __pyx_v_cmus, __pyx_v_cstds, __pyx_v_min_max_stats_lst->cmin_max_stats_lst, __pyx_v_results->cresults);
+  cbatch_backpropagate(__pyx_v_cpriors, __pyx_v_cstates, __pyx_v_cfull_states, __pyx_v_cpre_actions, __pyx_v_ctime_steps, __pyx_v_discount_factor, __pyx_v_crewards, __pyx_v_cvalues, __pyx_v_cdones, __pyx_v_cmus, __pyx_v_cstds, __pyx_v_min_max_stats_lst->cmin_max_stats_lst, __pyx_v_results->cresults);
 
-  /* "search_tree.pyx":90
+  /* "search_tree.pyx":92
  * 
  * 
- * def batch_backpropagate(list priors, list states, float discount_factor, list rewards, list values, list dones, list mus, list stds,             # <<<<<<<<<<<<<<
- *                          MinMaxStatsList min_max_stats_lst, ResultsWrapper results):
- * 
+ * def batch_backpropagate(list priors, list states, list full_states, list pre_actions, list time_steps,             # <<<<<<<<<<<<<<
+ *                         float discount_factor, list rewards, list values, list dones, list mus, list stds,
+ *                         MinMaxStatsList min_max_stats_lst, ResultsWrapper results):
  */
 
   /* function exit code */
@@ -3531,6 +3694,120 @@ static std::vector<std::vector<float> >  __pyx_convert_vector_from_py_std_3a__3a
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_AddTraceback("vector.from_py.__pyx_convert_vector_from_py_std_3a__3a_vector_3c_float_3e___", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_pretend_to_initialize(&__pyx_r);
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_item);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+static std::vector<int>  __pyx_convert_vector_from_py_int(PyObject *__pyx_v_o) {
+  std::vector<int>  __pyx_v_v;
+  PyObject *__pyx_v_item = NULL;
+  std::vector<int>  __pyx_r;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  Py_ssize_t __pyx_t_2;
+  PyObject *(*__pyx_t_3)(PyObject *);
+  PyObject *__pyx_t_4 = NULL;
+  int __pyx_t_5;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__pyx_convert_vector_from_py_int", 0);
+
+  /* "vector.from_py":47
+ * cdef vector[X] __pyx_convert_vector_from_py_int(object o) except *:
+ *     cdef vector[X] v
+ *     for item in o:             # <<<<<<<<<<<<<<
+ *         v.push_back(<X>item)
+ *     return v
+ */
+  if (likely(PyList_CheckExact(__pyx_v_o)) || PyTuple_CheckExact(__pyx_v_o)) {
+    __pyx_t_1 = __pyx_v_o; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
+    __pyx_t_3 = NULL;
+  } else {
+    __pyx_t_2 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_v_o); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 47, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __pyx_t_3 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 47, __pyx_L1_error)
+  }
+  for (;;) {
+    if (likely(!__pyx_t_3)) {
+      if (likely(PyList_CheckExact(__pyx_t_1))) {
+        if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
+        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+        __pyx_t_4 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 47, __pyx_L1_error)
+        #else
+        __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_4);
+        #endif
+      } else {
+        if (__pyx_t_2 >= PyTuple_GET_SIZE(__pyx_t_1)) break;
+        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+        __pyx_t_4 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 47, __pyx_L1_error)
+        #else
+        __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_4);
+        #endif
+      }
+    } else {
+      __pyx_t_4 = __pyx_t_3(__pyx_t_1);
+      if (unlikely(!__pyx_t_4)) {
+        PyObject* exc_type = PyErr_Occurred();
+        if (exc_type) {
+          if (likely(__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
+          else __PYX_ERR(0, 47, __pyx_L1_error)
+        }
+        break;
+      }
+      __Pyx_GOTREF(__pyx_t_4);
+    }
+    __Pyx_XDECREF_SET(__pyx_v_item, __pyx_t_4);
+    __pyx_t_4 = 0;
+
+    /* "vector.from_py":48
+ *     cdef vector[X] v
+ *     for item in o:
+ *         v.push_back(<X>item)             # <<<<<<<<<<<<<<
+ *     return v
+ * 
+ */
+    __pyx_t_5 = __Pyx_PyInt_As_int(__pyx_v_item); if (unlikely((__pyx_t_5 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 48, __pyx_L1_error)
+    __pyx_v_v.push_back(((int)__pyx_t_5));
+
+    /* "vector.from_py":47
+ * cdef vector[X] __pyx_convert_vector_from_py_int(object o) except *:
+ *     cdef vector[X] v
+ *     for item in o:             # <<<<<<<<<<<<<<
+ *         v.push_back(<X>item)
+ *     return v
+ */
+  }
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "vector.from_py":49
+ *     for item in o:
+ *         v.push_back(<X>item)
+ *     return v             # <<<<<<<<<<<<<<
+ * 
+ * 
+ */
+  __pyx_r = __pyx_v_v;
+  goto __pyx_L0;
+
+  /* "vector.from_py":45
+ * 
+ * @cname("__pyx_convert_vector_from_py_int")
+ * cdef vector[X] __pyx_convert_vector_from_py_int(object o) except *:             # <<<<<<<<<<<<<<
+ *     cdef vector[X] v
+ *     for item in o:
+ */
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_4);
+  __Pyx_AddTraceback("vector.from_py.__pyx_convert_vector_from_py_int", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_pretend_to_initialize(&__pyx_r);
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_item);
@@ -4407,15 +4684,19 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_batch_traverse, __pyx_k_batch_traverse, sizeof(__pyx_k_batch_traverse), 0, 0, 1, 1},
   {&__pyx_n_s_beta, __pyx_k_beta, sizeof(__pyx_k_beta), 0, 0, 1, 1},
   {&__pyx_n_s_cdones, __pyx_k_cdones, sizeof(__pyx_k_cdones), 0, 0, 1, 1},
+  {&__pyx_n_s_cfull_states, __pyx_k_cfull_states, sizeof(__pyx_k_cfull_states), 0, 0, 1, 1},
   {&__pyx_n_s_cline_in_traceback, __pyx_k_cline_in_traceback, sizeof(__pyx_k_cline_in_traceback), 0, 0, 1, 1},
   {&__pyx_n_s_cmus, __pyx_k_cmus, sizeof(__pyx_k_cmus), 0, 0, 1, 1},
+  {&__pyx_n_s_cpre_actions, __pyx_k_cpre_actions, sizeof(__pyx_k_cpre_actions), 0, 0, 1, 1},
   {&__pyx_n_s_cpriors, __pyx_k_cpriors, sizeof(__pyx_k_cpriors), 0, 0, 1, 1},
   {&__pyx_n_s_crewards, __pyx_k_crewards, sizeof(__pyx_k_crewards), 0, 0, 1, 1},
   {&__pyx_n_s_cstates, __pyx_k_cstates, sizeof(__pyx_k_cstates), 0, 0, 1, 1},
   {&__pyx_n_s_cstds, __pyx_k_cstds, sizeof(__pyx_k_cstds), 0, 0, 1, 1},
+  {&__pyx_n_s_ctime_steps, __pyx_k_ctime_steps, sizeof(__pyx_k_ctime_steps), 0, 0, 1, 1},
   {&__pyx_n_s_cvalues, __pyx_k_cvalues, sizeof(__pyx_k_cvalues), 0, 0, 1, 1},
   {&__pyx_n_s_discount_factor, __pyx_k_discount_factor, sizeof(__pyx_k_discount_factor), 0, 0, 1, 1},
   {&__pyx_n_s_dones, __pyx_k_dones, sizeof(__pyx_k_dones), 0, 0, 1, 1},
+  {&__pyx_n_s_full_states, __pyx_k_full_states, sizeof(__pyx_k_full_states), 0, 0, 1, 1},
   {&__pyx_n_s_gamma, __pyx_k_gamma, sizeof(__pyx_k_gamma), 0, 0, 1, 1},
   {&__pyx_n_s_getstate, __pyx_k_getstate, sizeof(__pyx_k_getstate), 0, 0, 1, 1},
   {&__pyx_n_s_lambd, __pyx_k_lambd, sizeof(__pyx_k_lambd), 0, 0, 1, 1},
@@ -4428,6 +4709,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_num_of_sampled_actions, __pyx_k_num_of_sampled_actions, sizeof(__pyx_k_num_of_sampled_actions), 0, 0, 1, 1},
   {&__pyx_n_s_num_of_sampled_states, __pyx_k_num_of_sampled_states, sizeof(__pyx_k_num_of_sampled_states), 0, 0, 1, 1},
   {&__pyx_n_s_policy_logits_pool, __pyx_k_policy_logits_pool, sizeof(__pyx_k_policy_logits_pool), 0, 0, 1, 1},
+  {&__pyx_n_s_pre_actions, __pyx_k_pre_actions, sizeof(__pyx_k_pre_actions), 0, 0, 1, 1},
   {&__pyx_n_s_priors, __pyx_k_priors, sizeof(__pyx_k_priors), 0, 0, 1, 1},
   {&__pyx_n_s_range, __pyx_k_range, sizeof(__pyx_k_range), 0, 0, 1, 1},
   {&__pyx_n_s_reduce, __pyx_k_reduce, sizeof(__pyx_k_reduce), 0, 0, 1, 1},
@@ -4444,6 +4726,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_states, __pyx_k_states, sizeof(__pyx_k_states), 0, 0, 1, 1},
   {&__pyx_n_s_stds, __pyx_k_stds, sizeof(__pyx_k_stds), 0, 0, 1, 1},
   {&__pyx_n_s_test, __pyx_k_test, sizeof(__pyx_k_test), 0, 0, 1, 1},
+  {&__pyx_n_s_time_steps, __pyx_k_time_steps, sizeof(__pyx_k_time_steps), 0, 0, 1, 1},
   {&__pyx_n_s_values, __pyx_k_values, sizeof(__pyx_k_values), 0, 0, 1, 1},
   {0, 0, 0, 0, 0, 0, 0}
 };
@@ -4516,29 +4799,29 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__6);
   __Pyx_GIVEREF(__pyx_tuple__6);
 
-  /* "search_tree.pyx":83
+  /* "search_tree.pyx":84
  * 
  * 
  * def batch_traverse(Roots roots, float alpha, float beta, float gamma, float lambd, MinMaxStatsList min_max_stats_lst,             # <<<<<<<<<<<<<<
  *                    ResultsWrapper results):
  *     cbatch_traverse(roots.roots, alpha, beta, gamma, lambd, min_max_stats_lst.cmin_max_stats_lst, results.cresults)
  */
-  __pyx_tuple__7 = PyTuple_Pack(7, __pyx_n_s_roots, __pyx_n_s_alpha, __pyx_n_s_beta, __pyx_n_s_gamma, __pyx_n_s_lambd, __pyx_n_s_min_max_stats_lst, __pyx_n_s_results); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(1, 83, __pyx_L1_error)
+  __pyx_tuple__7 = PyTuple_Pack(7, __pyx_n_s_roots, __pyx_n_s_alpha, __pyx_n_s_beta, __pyx_n_s_gamma, __pyx_n_s_lambd, __pyx_n_s_min_max_stats_lst, __pyx_n_s_results); if (unlikely(!__pyx_tuple__7)) __PYX_ERR(1, 84, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__7);
   __Pyx_GIVEREF(__pyx_tuple__7);
-  __pyx_codeobj__8 = (PyObject*)__Pyx_PyCode_New(7, 0, 7, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__7, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_search_tree_pyx, __pyx_n_s_batch_traverse, 83, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__8)) __PYX_ERR(1, 83, __pyx_L1_error)
+  __pyx_codeobj__8 = (PyObject*)__Pyx_PyCode_New(7, 0, 7, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__7, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_search_tree_pyx, __pyx_n_s_batch_traverse, 84, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__8)) __PYX_ERR(1, 84, __pyx_L1_error)
 
-  /* "search_tree.pyx":90
+  /* "search_tree.pyx":92
  * 
  * 
- * def batch_backpropagate(list priors, list states, float discount_factor, list rewards, list values, list dones, list mus, list stds,             # <<<<<<<<<<<<<<
- *                          MinMaxStatsList min_max_stats_lst, ResultsWrapper results):
- * 
+ * def batch_backpropagate(list priors, list states, list full_states, list pre_actions, list time_steps,             # <<<<<<<<<<<<<<
+ *                         float discount_factor, list rewards, list values, list dones, list mus, list stds,
+ *                         MinMaxStatsList min_max_stats_lst, ResultsWrapper results):
  */
-  __pyx_tuple__9 = PyTuple_Pack(17, __pyx_n_s_priors, __pyx_n_s_states, __pyx_n_s_discount_factor, __pyx_n_s_rewards, __pyx_n_s_values, __pyx_n_s_dones, __pyx_n_s_mus, __pyx_n_s_stds, __pyx_n_s_min_max_stats_lst, __pyx_n_s_results, __pyx_n_s_cpriors, __pyx_n_s_cstates, __pyx_n_s_crewards, __pyx_n_s_cvalues, __pyx_n_s_cdones, __pyx_n_s_cmus, __pyx_n_s_cstds); if (unlikely(!__pyx_tuple__9)) __PYX_ERR(1, 90, __pyx_L1_error)
+  __pyx_tuple__9 = PyTuple_Pack(23, __pyx_n_s_priors, __pyx_n_s_states, __pyx_n_s_full_states, __pyx_n_s_pre_actions, __pyx_n_s_time_steps, __pyx_n_s_discount_factor, __pyx_n_s_rewards, __pyx_n_s_values, __pyx_n_s_dones, __pyx_n_s_mus, __pyx_n_s_stds, __pyx_n_s_min_max_stats_lst, __pyx_n_s_results, __pyx_n_s_cpriors, __pyx_n_s_cstates, __pyx_n_s_cfull_states, __pyx_n_s_cpre_actions, __pyx_n_s_ctime_steps, __pyx_n_s_crewards, __pyx_n_s_cvalues, __pyx_n_s_cdones, __pyx_n_s_cmus, __pyx_n_s_cstds); if (unlikely(!__pyx_tuple__9)) __PYX_ERR(1, 92, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__9);
   __Pyx_GIVEREF(__pyx_tuple__9);
-  __pyx_codeobj__10 = (PyObject*)__Pyx_PyCode_New(10, 0, 17, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__9, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_search_tree_pyx, __pyx_n_s_batch_backpropagate, 90, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__10)) __PYX_ERR(1, 90, __pyx_L1_error)
+  __pyx_codeobj__10 = (PyObject*)__Pyx_PyCode_New(13, 0, 23, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__9, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_search_tree_pyx, __pyx_n_s_batch_backpropagate, 92, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__10)) __PYX_ERR(1, 92, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -4592,35 +4875,35 @@ static int __Pyx_modinit_type_init_code(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__Pyx_modinit_type_init_code", 0);
   /*--- Type init code ---*/
-  if (PyType_Ready(&__pyx_type_11search_tree_ResultsWrapper) < 0) __PYX_ERR(1, 31, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_11search_tree_ResultsWrapper) < 0) __PYX_ERR(1, 32, __pyx_L1_error)
   #if PY_VERSION_HEX < 0x030800B1
   __pyx_type_11search_tree_ResultsWrapper.tp_print = 0;
   #endif
   if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_11search_tree_ResultsWrapper.tp_dictoffset && __pyx_type_11search_tree_ResultsWrapper.tp_getattro == PyObject_GenericGetAttr)) {
     __pyx_type_11search_tree_ResultsWrapper.tp_getattro = __Pyx_PyObject_GenericGetAttr;
   }
-  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_ResultsWrapper, (PyObject *)&__pyx_type_11search_tree_ResultsWrapper) < 0) __PYX_ERR(1, 31, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_11search_tree_ResultsWrapper) < 0) __PYX_ERR(1, 31, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_ResultsWrapper, (PyObject *)&__pyx_type_11search_tree_ResultsWrapper) < 0) __PYX_ERR(1, 32, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_11search_tree_ResultsWrapper) < 0) __PYX_ERR(1, 32, __pyx_L1_error)
   __pyx_ptype_11search_tree_ResultsWrapper = &__pyx_type_11search_tree_ResultsWrapper;
-  if (PyType_Ready(&__pyx_type_11search_tree_MinMaxStatsList) < 0) __PYX_ERR(1, 37, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_11search_tree_MinMaxStatsList) < 0) __PYX_ERR(1, 38, __pyx_L1_error)
   #if PY_VERSION_HEX < 0x030800B1
   __pyx_type_11search_tree_MinMaxStatsList.tp_print = 0;
   #endif
   if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_11search_tree_MinMaxStatsList.tp_dictoffset && __pyx_type_11search_tree_MinMaxStatsList.tp_getattro == PyObject_GenericGetAttr)) {
     __pyx_type_11search_tree_MinMaxStatsList.tp_getattro = __Pyx_PyObject_GenericGetAttr;
   }
-  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_MinMaxStatsList, (PyObject *)&__pyx_type_11search_tree_MinMaxStatsList) < 0) __PYX_ERR(1, 37, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_11search_tree_MinMaxStatsList) < 0) __PYX_ERR(1, 37, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_MinMaxStatsList, (PyObject *)&__pyx_type_11search_tree_MinMaxStatsList) < 0) __PYX_ERR(1, 38, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_11search_tree_MinMaxStatsList) < 0) __PYX_ERR(1, 38, __pyx_L1_error)
   __pyx_ptype_11search_tree_MinMaxStatsList = &__pyx_type_11search_tree_MinMaxStatsList;
-  if (PyType_Ready(&__pyx_type_11search_tree_Roots) < 0) __PYX_ERR(1, 49, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_11search_tree_Roots) < 0) __PYX_ERR(1, 50, __pyx_L1_error)
   #if PY_VERSION_HEX < 0x030800B1
   __pyx_type_11search_tree_Roots.tp_print = 0;
   #endif
   if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_11search_tree_Roots.tp_dictoffset && __pyx_type_11search_tree_Roots.tp_getattro == PyObject_GenericGetAttr)) {
     __pyx_type_11search_tree_Roots.tp_getattro = __Pyx_PyObject_GenericGetAttr;
   }
-  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_Roots, (PyObject *)&__pyx_type_11search_tree_Roots) < 0) __PYX_ERR(1, 49, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_11search_tree_Roots) < 0) __PYX_ERR(1, 49, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_Roots, (PyObject *)&__pyx_type_11search_tree_Roots) < 0) __PYX_ERR(1, 50, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_11search_tree_Roots) < 0) __PYX_ERR(1, 50, __pyx_L1_error)
   __pyx_ptype_11search_tree_Roots = &__pyx_type_11search_tree_Roots;
   __Pyx_RefNannyFinishContext();
   return 0;
@@ -4853,28 +5136,28 @@ if (!__Pyx_RefNanny) {
   if (__Pyx_patch_abc() < 0) __PYX_ERR(1, 1, __pyx_L1_error)
   #endif
 
-  /* "search_tree.pyx":83
+  /* "search_tree.pyx":84
  * 
  * 
  * def batch_traverse(Roots roots, float alpha, float beta, float gamma, float lambd, MinMaxStatsList min_max_stats_lst,             # <<<<<<<<<<<<<<
  *                    ResultsWrapper results):
  *     cbatch_traverse(roots.roots, alpha, beta, gamma, lambd, min_max_stats_lst.cmin_max_stats_lst, results.cresults)
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11search_tree_1batch_traverse, NULL, __pyx_n_s_search_tree); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 83, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11search_tree_1batch_traverse, NULL, __pyx_n_s_search_tree); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 84, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_batch_traverse, __pyx_t_1) < 0) __PYX_ERR(1, 83, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_batch_traverse, __pyx_t_1) < 0) __PYX_ERR(1, 84, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "search_tree.pyx":90
+  /* "search_tree.pyx":92
  * 
  * 
- * def batch_backpropagate(list priors, list states, float discount_factor, list rewards, list values, list dones, list mus, list stds,             # <<<<<<<<<<<<<<
- *                          MinMaxStatsList min_max_stats_lst, ResultsWrapper results):
- * 
+ * def batch_backpropagate(list priors, list states, list full_states, list pre_actions, list time_steps,             # <<<<<<<<<<<<<<
+ *                         float discount_factor, list rewards, list values, list dones, list mus, list stds,
+ *                         MinMaxStatsList min_max_stats_lst, ResultsWrapper results):
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11search_tree_3batch_backpropagate, NULL, __pyx_n_s_search_tree); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 90, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11search_tree_3batch_backpropagate, NULL, __pyx_n_s_search_tree); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 92, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_batch_backpropagate, __pyx_t_1) < 0) __PYX_ERR(1, 90, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_batch_backpropagate, __pyx_t_1) < 0) __PYX_ERR(1, 92, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "search_tree.pyx":1

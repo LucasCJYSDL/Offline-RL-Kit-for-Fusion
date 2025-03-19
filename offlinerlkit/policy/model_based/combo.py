@@ -7,7 +7,6 @@ from torch.nn import functional as F
 from typing import Dict, Union, Tuple
 from collections import defaultdict
 from offlinerlkit.policy import CQLPolicy
-from offlinerlkit.dynamics import BaseDynamics
 
 
 class COMBOPolicy(CQLPolicy):
@@ -17,13 +16,16 @@ class COMBOPolicy(CQLPolicy):
 
     def __init__(
         self,
-        dynamics: BaseDynamics,
+        dynamics,
         actor: nn.Module,
         critic1: nn.Module,
         critic2: nn.Module,
         actor_optim: torch.optim.Optimizer,
         critic1_optim: torch.optim.Optimizer,
         critic2_optim: torch.optim.Optimizer,
+        state_idxs,
+        action_idxs,
+        sa_processor,
         action_space: gym.spaces.Space,
         tau: float = 0.005,
         gamma: float  = 0.99,
@@ -64,10 +66,13 @@ class COMBOPolicy(CQLPolicy):
         self._uniform_rollout = uniform_rollout
         self._rho_s = rho_s
 
+        self.state_idxs = state_idxs
+        self.action_idxs = action_idxs
+        self.sa_processor = sa_processor
+
     def rollout(
         self,
-        init_obss: np.ndarray,
-        rollout_length: int
+        init_samples
     ) -> Tuple[Dict[str, np.ndarray], Dict]:
 
         num_transitions = 0
@@ -75,8 +80,21 @@ class COMBOPolicy(CQLPolicy):
         rollout_transitions = defaultdict(list)
 
         # rollout
-        observations = init_obss
-        for _ in range(rollout_length):
+        rollout_length = init_samples["full_observations"].shape[1]
+        idx_list = np.array(range(0, init_samples["full_observations"].shape[0]))
+
+        full_observations = init_samples["full_observations"][:, 0]
+        full_actions = init_samples["full_actions"][:, 0]
+        pre_actions = init_samples["pre_actions"][:, 0]
+        time_steps = init_samples["time_steps"][:, 0]
+        time_terminals = init_samples["terminals"][:, 0]
+
+        self.dynamics.reset(init_samples["hidden_states"]) 
+
+        for t in range(rollout_length):
+            observations = full_observations[:, self.state_idxs]
+            observations = self.sa_processor.get_rl_state(observations, time_steps)
+
             if self._uniform_rollout:
                 actions = np.random.uniform(
                     self.action_space.low[0],
@@ -85,21 +103,34 @@ class COMBOPolicy(CQLPolicy):
                 )
             else:
                 actions = self.select_action(observations)
-            next_observations, rewards, terminals, info = self.dynamics.step(observations, actions)
-            rollout_transitions["obss"].append(observations)
-            rollout_transitions["next_obss"].append(next_observations)
-            rollout_transitions["actions"].append(actions)
-            rollout_transitions["rewards"].append(rewards)
-            rollout_transitions["terminals"].append(terminals)
+            
+            step_actions = self.sa_processor.get_step_action(actions)
+            full_actions[:, self.action_idxs] = step_actions.copy()
 
-            num_transitions += len(observations)
-            rewards_arr = np.append(rewards_arr, rewards.flatten())
+            next_observations, rewards, terminals, info = self.dynamics.step(full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs)
+            next_observations = self.sa_processor.get_rl_state(next_observations, info["next_time_steps"])
 
-            nonterm_mask = (~terminals).flatten()
+            rollout_transitions["obss"].append(observations[idx_list])
+            rollout_transitions["next_obss"].append(next_observations[idx_list])
+            rollout_transitions["actions"].append(actions[idx_list])
+            rollout_transitions["rewards"].append(rewards[idx_list])
+            rollout_transitions["terminals"].append(terminals[idx_list])
+
+            num_transitions += len(idx_list)
+            rewards_arr = np.append(rewards_arr, rewards[idx_list].flatten())
+
+            nonterm_mask = (~terminals[idx_list]).flatten()
             if nonterm_mask.sum() == 0:
                 break
-
-            observations = next_observations[nonterm_mask]
+            
+            # danger
+            full_observations = info["next_full_observations"]
+            time_steps = info["next_time_steps"]
+            pre_actions = full_actions.copy()
+            if t < rollout_length - 1:
+                idx_list = idx_list[nonterm_mask]
+                full_actions = init_samples["full_actions"][:, t+1]
+                time_terminals = init_samples["terminals"][:, t+1]
         
         for k, v in rollout_transitions.items():
             rollout_transitions[k] = np.concatenate(v, axis=0)
@@ -109,7 +140,7 @@ class COMBOPolicy(CQLPolicy):
     
     def learn(self, batch: Dict) -> Dict[str, float]:
         real_batch, fake_batch = batch["real"], batch["fake"]
-        mix_batch = {k: torch.cat([real_batch[k], fake_batch[k]], 0) for k in real_batch.keys()}
+        mix_batch = {k: torch.cat([real_batch[k], fake_batch[k]], 0) for k in fake_batch.keys()}
 
         obss, actions, next_obss, rewards, terminals = mix_batch["observations"], mix_batch["actions"], \
             mix_batch["next_observations"], mix_batch["rewards"], mix_batch["terminals"]

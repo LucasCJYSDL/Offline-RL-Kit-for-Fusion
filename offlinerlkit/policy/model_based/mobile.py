@@ -1,14 +1,11 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import gym
 
-from torch.nn import functional as F
+from collections import defaultdict
 from typing import Dict, Union, Tuple
 from copy import deepcopy
-from collections import defaultdict
 from offlinerlkit.policy import BasePolicy
-from offlinerlkit.dynamics import BaseDynamics
 
 
 class MOBILEPolicy(BasePolicy):
@@ -18,11 +15,14 @@ class MOBILEPolicy(BasePolicy):
 
     def __init__(
         self,
-        dynamics: BaseDynamics,
+        dynamics,
         actor: nn.Module,
         critics: nn.ModuleList,
         actor_optim: torch.optim.Optimizer,
         critics_optim: torch.optim.Optimizer,
+        state_idxs,
+        action_idxs,
+        sa_processor,
         tau: float = 0.005,
         gamma: float  = 0.99,
         alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
@@ -57,6 +57,10 @@ class MOBILEPolicy(BasePolicy):
         self._num_samples = num_samples
         self._deteterministic_backup = deterministic_backup
         self._max_q_backup = max_q_backup
+
+        self.state_idxs = state_idxs
+        self.action_idxs = action_idxs
+        self.sa_processor = sa_processor
 
     def train(self) -> None:
         self.actor.train()
@@ -94,8 +98,7 @@ class MOBILEPolicy(BasePolicy):
     
     def rollout(
         self,
-        init_obss: np.ndarray,
-        rollout_length: int
+        init_samples
     ) -> Tuple[Dict[str, np.ndarray], Dict]:
 
         num_transitions = 0
@@ -103,38 +106,77 @@ class MOBILEPolicy(BasePolicy):
         rollout_transitions = defaultdict(list)
 
         # rollout
-        observations = init_obss
-        for _ in range(rollout_length):
+        rollout_length = init_samples["full_observations"].shape[1]
+        idx_list = np.array(range(0, init_samples["full_observations"].shape[0]))
+
+        full_observations = init_samples["full_observations"][:, 0]
+        full_actions = init_samples["full_actions"][:, 0]
+        pre_actions = init_samples["pre_actions"][:, 0]
+        time_steps = init_samples["time_steps"][:, 0]
+        time_terminals = init_samples["terminals"][:, 0]
+
+        self.dynamics.reset(init_samples["hidden_states"]) 
+
+        for t in range(rollout_length):
+            observations = full_observations[:, self.state_idxs]
+            observations = self.sa_processor.get_rl_state(observations, time_steps)
             actions = self.select_action(observations)
-            next_observations, rewards, terminals, info = self.dynamics.step(observations, actions)
+            step_actions = self.sa_processor.get_step_action(actions)
+            full_actions[:, self.action_idxs] = step_actions.copy()
 
-            rollout_transitions["obss"].append(observations)
-            rollout_transitions["next_obss"].append(next_observations)
-            rollout_transitions["actions"].append(actions)
-            rollout_transitions["rewards"].append(rewards)
-            rollout_transitions["terminals"].append(terminals)
+            # new for mobile
+            rollout_transitions["hidden_states"].append(self.dynamics.get_memory()[idx_list])
 
-            num_transitions += len(observations)
-            rewards_arr = np.append(rewards_arr, rewards.flatten())
+            next_observations, rewards, terminals, info = self.dynamics.step(full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs)
+            next_observations = self.sa_processor.get_rl_state(next_observations, info["next_time_steps"])
 
-            nonterm_mask = (~terminals).flatten()
+            rollout_transitions["obss"].append(observations[idx_list])
+            rollout_transitions["next_obss"].append(next_observations[idx_list])
+            rollout_transitions["actions"].append(actions[idx_list])
+            rollout_transitions["rewards"].append(rewards[idx_list])
+            rollout_transitions["terminals"].append(terminals[idx_list])
+
+            # new for mobile
+            rollout_transitions["full_obss"].append(full_observations[idx_list])
+            rollout_transitions["full_actions"].append(full_actions[idx_list])
+            rollout_transitions["pre_actions"].append(pre_actions[idx_list])
+            rollout_transitions["time_steps"].append(time_steps[idx_list])
+
+            num_transitions += len(idx_list)
+            rewards_arr = np.append(rewards_arr, rewards[idx_list].flatten())
+
+            nonterm_mask = (~terminals[idx_list]).flatten()
             if nonterm_mask.sum() == 0:
                 break
-
-            observations = next_observations[nonterm_mask]
+            
+            # danger
+            full_observations = info["next_full_observations"]
+            time_steps = info["next_time_steps"]
+            pre_actions = full_actions.copy()
+            if t < rollout_length - 1:
+                idx_list = idx_list[nonterm_mask]
+                full_actions = init_samples["full_actions"][:, t+1]
+                time_terminals = init_samples["terminals"][:, t+1]
         
         for k, v in rollout_transitions.items():
             rollout_transitions[k] = np.concatenate(v, axis=0)
 
         return rollout_transitions, \
             {"num_transitions": num_transitions, "reward_mean": rewards_arr.mean()}
-    
+
     @ torch.no_grad()
-    def compute_lcb(self, obss: torch.Tensor, actions: torch.Tensor):
+    def compute_lcb(self, full_obss: torch.Tensor, pre_actions: torch.Tensor, full_actions: torch.Tensor, time_steps: torch.Tensor, hidden_states):
+        # print(full_obss.shape, pre_actions.shape, full_actions.shape, time_steps.shape, hidden_states.shape)
         # compute next q std
-        pred_next_obss = self.dynamics.sample_next_obss(obss, actions, self._num_samples)
+        pred_next_obss = self.dynamics.sample_next_obss(full_obss, pre_actions, full_actions, hidden_states, self._num_samples)
         num_samples, num_ensembles, batch_size, obs_dim = pred_next_obss.shape
         pred_next_obss = pred_next_obss.reshape(-1, obs_dim)
+
+        pred_next_obss = pred_next_obss[:, self.state_idxs]
+        time_steps = time_steps.unsqueeze(0).unsqueeze(0).repeat(num_samples, num_ensembles, 1, 1).cpu().numpy()
+        next_time_steps = time_steps.reshape(-1) + 1
+        pred_next_obss = self.sa_processor.get_rl_state(pred_next_obss, next_time_steps)
+
         pred_next_actions, _ = self.actforward(pred_next_obss)
         
         pred_next_qs = torch.cat([critic_old(pred_next_obss, pred_next_actions) for critic_old in self.critics_old], 1)
@@ -153,7 +195,7 @@ class MOBILEPolicy(BasePolicy):
         # update critic
         qs = torch.stack([critic(obss, actions) for critic in self.critics], 0)
         with torch.no_grad():
-            penalty = self.compute_lcb(obss, actions)
+            penalty = self.compute_lcb(mix_batch["full_observations"], mix_batch["pre_actions"], mix_batch["full_actions"], mix_batch["time_steps"], mix_batch["hidden_states"])
             penalty[:len(real_batch["rewards"])] = 0.0
 
             if self._max_q_backup:

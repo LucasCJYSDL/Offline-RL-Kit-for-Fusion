@@ -1,118 +1,103 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn import functional as F
-from typing import Dict, List, Union, Tuple, Optional
-from offlinerlkit.nets import EnsembleLinear
+from typing import Optional
+from contextlib import nullcontext
 
-
-class Swish(nn.Module):
-    def __init__(self) -> None:
-        super(Swish, self).__init__()
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x * torch.sigmoid(x)
-        return x
-
-
-def soft_clamp(
-    x : torch.Tensor,
-    _min: Optional[torch.Tensor] = None,
-    _max: Optional[torch.Tensor] = None
-) -> torch.Tensor:
-    # clamp tensor values while mataining the gradient
-    if _max is not None:
-        x = _max - F.softplus(_max - x)
-    if _min is not None:
-        x = _min + F.softplus(x - _min)
-    return x
-
+from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
 
 class EnsembleDynamicsModel(nn.Module):
     def __init__(
         self,
-        obs_dim: int,
-        action_dim: int,
-        hidden_dims: Union[List[int], Tuple[int]],
-        num_ensemble: int = 7,
-        num_elites: int = 5,
-        activation: nn.Module = Swish,
-        weight_decays: Optional[Union[List[float], Tuple[float]]] = None,
-        with_reward: bool = True,
+        model_path: str,
+        output_dim: int = -1,
         device: str = "cpu"
     ) -> None:
         super().__init__()
 
-        self.num_ensemble = num_ensemble
-        self.num_elites = num_elites
-        self._with_reward = with_reward
-        self.device = torch.device(device)
+        # load the well-trained rnn model ensemble
+        ensemble = load_ensemble_from_parent_dir(parent_dir=model_path) # TODO: an ensemble of dynamics models
+        self.all_models = nn.ModuleList(ensemble.members)
+        self.num_ensemble = len(self.all_models)
 
-        self.activation = activation()
+        for memb in self.all_models:
+            memb.to(device)
+            memb.eval()
+            # print(type(memb))
 
-        assert len(weight_decays) == (len(hidden_dims) + 1)
+        self.device = device
+        self.member_list = np.array(range(0, self.num_ensemble))
 
-        module_list = []
-        hidden_dims = [obs_dim+action_dim] + list(hidden_dims)
-        if weight_decays is None:
-            weight_decays = [0.0] * (len(hidden_dims) + 1)
-        for in_dim, out_dim, weight_decay in zip(hidden_dims[:-1], hidden_dims[1:], weight_decays[:-1]):
-            module_list.append(EnsembleLinear(in_dim, out_dim, num_ensemble, weight_decay))
-        self.backbones = nn.ModuleList(module_list)
-
-        self.output_layer = EnsembleLinear(
-            hidden_dims[-1],
-            2 * (obs_dim + self._with_reward),
-            num_ensemble,
-            weight_decays[-1]
-        )
-
-        self.register_parameter(
-            "max_logvar",
-            nn.Parameter(torch.ones(obs_dim + self._with_reward) * 0.5, requires_grad=True)
-        )
-        self.register_parameter(
-            "min_logvar",
-            nn.Parameter(torch.ones(obs_dim + self._with_reward) * -10, requires_grad=True)
-        )
-
-        self.register_parameter(
-            "elites",
-            nn.Parameter(torch.tensor(list(range(0, self.num_elites))), requires_grad=False)
-        )
-
-        self.to(self.device)
-
-    def forward(self, obs_action: np.ndarray) -> Tuple[torch.Tensor, torch.Tensor]:
-        obs_action = torch.as_tensor(obs_action, dtype=torch.float32).to(self.device)
-        output = obs_action
-        for layer in self.backbones:
-            output = self.activation(layer(output))
-        mean, logvar = torch.chunk(self.output_layer(output), 2, dim=-1)
-        logvar = soft_clamp(logvar, self.min_logvar, self.max_logvar)
-        return mean, logvar
-
-    def load_save(self) -> None:
-        for layer in self.backbones:
-            layer.load_save()
-        self.output_layer.load_save()
-
-    def update_save(self, indexes: List[int]) -> None:
-        for layer in self.backbones:
-            layer.update_save(indexes)
-        self.output_layer.update_save(indexes)
+        # if output_dim > 0:
+        #     self.register_parameter(
+        #         "max_logvar",
+        #         nn.Parameter(torch.ones(output_dim) * 0.5, requires_grad=True)
+        #     )
+        #     self.register_parameter(
+        #         "min_logvar",
+        #         nn.Parameter(torch.ones(output_dim) * -10, requires_grad=True)
+        #     )
+        #     self.to(self.device)
     
-    def get_decay_loss(self) -> torch.Tensor:
-        decay_loss = 0
-        for layer in self.backbones:
-            decay_loss += layer.get_decay_loss()
-        decay_loss += self.output_layer.get_decay_loss()
-        return decay_loss
+    def reset(self, hidden_states):
+        for memb in self.all_models:
+            memb.reset()
+        if hidden_states is not None:
+            # danger
+            i = 0
+            for memb in self.all_models:
+                memb._hidden_state = torch.tensor(hidden_states[i], device=self.device)
+                i += 1
+        
+    def forward(self, net_input, is_tensor=False, with_grad=False):
+        if not is_tensor:
+            net_input = torch.tensor(net_input, device=self.device)
+        means, stds = [], []
 
-    def set_elites(self, indexes: List[int]) -> None:
-        assert len(indexes) <= self.num_ensemble and max(indexes) < self.num_ensemble
-        self.register_parameter('elites', nn.Parameter(torch.tensor(indexes), requires_grad=False))
+        context = torch.no_grad() if not with_grad else nullcontext()
+
+        with context:
+            for memb in self.all_models:
+                net_input_n = memb.normalizer.normalize(net_input, 0)
+                net_output_n, info = memb.single_sample_output_from_torch(net_input_n, with_grad=with_grad) # we have updated the rpnn class in the dynamics toolbox
+
+                mean = memb.normalizer.unnormalize(info["mean_predictions"], 1)
+                std = getattr(memb.normalizer, f'{1}_scaling') * info["std_predictions"] # danger
+                if not is_tensor:
+                    mean = mean.cpu().numpy()
+                    std = std.cpu().numpy()
+                means.append(mean)
+                stds.append(std)
+
+        if not is_tensor:
+            return np.array(means), np.array(stds)
+        return torch.stack(means), torch.stack(stds)
     
-    def random_elite_idxs(self, batch_size: int) -> np.ndarray:
-        idxs = np.random.choice(self.elites.data.cpu().numpy(), size=batch_size)
+    
+    def get_sl_loss(self, x, y, mask):
+        sl_loss = 0.
+
+        x = torch.tensor(x, device=self.device)
+        y = torch.tensor(y, device=self.device)
+        mask = torch.tensor(mask, device=self.device)
+
+        for memb in self.all_models:
+            memb_x = memb.normalizer.normalize(x, 0)
+            net_out = memb.get_net_out((memb_x, )) 
+            # memb_y = y / getattr(memb.normalizer, f'{1}_scaling') # TODO: unnormalize the net_out
+            memb_y = memb.normalizer.normalize(y, 1)
+            sl_loss += memb.loss(net_out, (memb_x, memb_y, mask.clone()))[0]
+
+        return sl_loss / float(self.num_ensemble)
+
+    
+    def random_member_idxs(self, batch_size: int) -> np.ndarray:
+        idxs = np.random.choice(self.member_list, size=batch_size)
         return idxs
+    
+    def get_memory(self):
+        memory = []
+        for memb in self.all_models:
+            memory.append(memb._hidden_state.cpu().numpy())
+
+        return np.moveaxis(np.array(memory), source=2, destination=0)

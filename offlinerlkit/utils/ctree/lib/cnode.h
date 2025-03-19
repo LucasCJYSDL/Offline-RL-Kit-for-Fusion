@@ -14,6 +14,11 @@ public:
     int state_num;
     std::vector<std::vector<float> > prior_list;
     std::vector<std::vector<float> > state_list;
+
+    std::vector<std::vector<float> > full_state_list;
+    std::vector<std::vector<float> > pre_action_list;
+    std::vector<int> time_step_list;
+
     std::vector<int> state_visit_counts;
     std::vector<int> action_nums;
     std::vector<bool> done_list;
@@ -42,7 +47,8 @@ public:
     CNode(int num_of_sampled_actions, int num_of_sampled_states);
     ~CNode();
 
-    void expand(const std::vector<float> &prior, const std::vector<float> &state, const std::vector<float> &pi_mus, const std::vector<float> &pi_log_stds, float reward, bool is_done);
+    void expand(const std::vector<float> &prior, const std::vector<float> &state, const std::vector<float> &pi_mus, const std::vector<float> &pi_log_stds, 
+                const std::vector<float> &full_state, const std::vector<float> &pre_action, int time_step, float reward, bool is_done);
     bool expanded();
     void sample_action();
 
@@ -64,7 +70,8 @@ public:
     CRoots();
     CRoots(int root_num, int num_of_sampled_actions, int num_of_sampled_states);
     ~CRoots();
-    void prepare(const std::vector<std::vector<float> > &priors, const std::vector<std::vector<float> > &states, const std::vector<std::vector<float> > &pi_mus, const std::vector<std::vector<float> > &pi_stds);
+    void prepare(const std::vector<std::vector<float> > &priors, const std::vector<std::vector<float> > &states, const std::vector<std::vector<float> > &pi_mus, const std::vector<std::vector<float> > &pi_stds,
+                 const std::vector<std::vector<float> > &full_states, const std::vector<std::vector<float> > &pre_actions, const std::vector<int> &time_steps);
     void clear();
 
     // sampled related core code
@@ -82,6 +89,11 @@ public:
     std::vector<std::vector<float> > last_priors;
     std::vector<std::vector<float> > last_states;
     std::vector<std::vector<float> > last_actions;
+
+    std::vector<std::vector<float> > last_full_states;
+    std::vector<std::vector<float> > last_pre_actions;
+    std::vector<int> last_time_steps;
+
     std::vector<bool> dones;
 
     std::vector<CNode *> nodes;
@@ -98,6 +110,9 @@ void cbackpropagate(std::vector<CNode *> &search_path, CMinMaxStats &min_max_sta
 
 void cbackpropagate_when_done(std::vector<CNode *> &search_path, CMinMaxStats &min_max_stats, float discount_factor);
 
-void cbatch_backpropagate(const std::vector<std::vector<float> > &priors, const std::vector<std::vector<float> > &states, float discount_factor, const std::vector<float> &rewards, const std::vector<float> &values, const std::vector<bool> &dones, const std::vector<std::vector<float> > &mus, const std::vector<std::vector<float> > &stds, CMinMaxStatsList *min_max_stats_lst, CSearchResults &results);
+void cbatch_backpropagate(const std::vector<std::vector<float> > &priors, const std::vector<std::vector<float> > &states, 
+                          const std::vector<std::vector<float> > &full_states, const std::vector<std::vector<float> > &pre_actions, const std::vector<int> &time_steps,
+                          float discount_factor, const std::vector<float> &rewards, const std::vector<float> &values, const std::vector<bool> &dones, 
+                          const std::vector<std::vector<float> > &mus, const std::vector<std::vector<float> > &stds, CMinMaxStatsList *min_max_stats_lst, CSearchResults &results);
 
 #endif

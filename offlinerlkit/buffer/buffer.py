@@ -4,15 +4,6 @@ import torch
 from typing import Optional, Union, Tuple, Dict
 from numpy.lib.stride_tricks import as_strided
 
-def sliding_window(arr, window_size=5):
-    # Calculate shape and strides
-    shape = (arr.shape[0] - window_size + 1, window_size) + arr.shape[1:]
-    strides = (arr.strides[0],) + arr.strides
-    # Create sliding window view
-    return as_strided(arr, shape=shape, strides=strides)
-
-#TODO: Sequence code for replay buffer
-
 class ReplayBuffer:
     def __init__(
         self,
@@ -21,33 +12,32 @@ class ReplayBuffer:
         obs_dtype: np.dtype,
         action_dim: int,
         action_dtype: np.dtype,
-        device: str = "cpu",
-        seq_len: int = "1"
+        device: str = "cpu"
     ) -> None:
         self._max_size = buffer_size
         self.obs_shape = obs_shape
         self.obs_dtype = obs_dtype
         self.action_dim = action_dim
         self.action_dtype = action_dtype
-        self.seq_len = seq_len
         
         self._ptr = 0
         self._size = 0
 
-        if seq_len > 1:
-            self.observations = np.zeros((self._max_size, seq_len) + self.obs_shape, dtype=obs_dtype)
-            self.next_observations = np.zeros((self._max_size, seq_len) + self.obs_shape, dtype=obs_dtype)
-            self.actions = np.zeros((self._max_size, seq_len, self.action_dim), dtype=action_dtype)
-            self.rewards = np.zeros((self._max_size, seq_len, 1), dtype=np.float32)
-            self.terminals = np.zeros((self._max_size, seq_len, 1), dtype=np.float32)
-        else:
-            self.observations = np.zeros((self._max_size,) + self.obs_shape, dtype=obs_dtype)
-            self.next_observations = np.zeros((self._max_size,) + self.obs_shape, dtype=obs_dtype)
-            self.actions = np.zeros((self._max_size, self.action_dim), dtype=action_dtype)
-            self.rewards = np.zeros((self._max_size, 1), dtype=np.float32)
-            self.terminals = np.zeros((self._max_size, 1), dtype=np.float32)
+        self.observations = np.zeros((self._max_size,) + self.obs_shape, dtype=obs_dtype)
+        self.next_observations = np.zeros((self._max_size,) + self.obs_shape, dtype=obs_dtype)
+        self.actions = np.zeros((self._max_size, self.action_dim), dtype=action_dtype)
+        self.rewards = np.zeros((self._max_size, 1), dtype=np.float32)
+        self.terminals = np.zeros((self._max_size, 1), dtype=np.float32)
 
         self.device = torch.device(device)
+        
+        self.full_observations = None
+        self.full_next_observations = None
+        self.pre_actions = None
+        self.full_actions = None
+        self.time_steps = None
+        self.hidden_states = None
+        self.net_input = None
 
     def add(
         self,
@@ -73,7 +63,12 @@ class ReplayBuffer:
         next_obss: np.ndarray,
         actions: np.ndarray,
         rewards: np.ndarray,
-        terminals: np.ndarray
+        terminals: np.ndarray,
+        full_obss: Optional[np.ndarray] = None,
+        full_actions: Optional[np.ndarray] = None,
+        pre_actions: Optional[np.ndarray] = None,
+        time_steps: Optional[np.ndarray] = None,
+        hidden_states: Optional[np.ndarray] = None
     ) -> None:
         batch_size = len(obss)
         indexes = np.arange(self._ptr, self._ptr + batch_size) % self._max_size
@@ -84,31 +79,54 @@ class ReplayBuffer:
         self.rewards[indexes] = np.array(rewards).copy()
         self.terminals[indexes] = np.array(terminals).copy()
 
+        if full_obss is not None:
+            # initialize if necessary
+            if self.full_observations is None:
+                self.full_observations = np.zeros((self._max_size,) + full_obss.shape[1:], dtype=full_obss.dtype)
+                self.full_actions = np.zeros((self._max_size, full_actions.shape[-1]), dtype=full_actions.dtype)
+                self.pre_actions = np.zeros((self._max_size, pre_actions.shape[-1]), dtype=pre_actions.dtype)
+                self.time_steps = np.zeros((self._max_size, 1), dtype=np.float32)
+
+            self.full_observations[indexes] = full_obss.copy()
+            self.full_actions[indexes] = full_actions.copy()
+            self.pre_actions[indexes] = pre_actions.copy()
+            self.time_steps[indexes] = time_steps.copy()
+        
+        if hidden_states is not None:
+            # initialize if necessary
+            if self.hidden_states is None:
+                self.hidden_states = np.zeros((self._max_size,) + hidden_states.shape[1:], dtype=hidden_states.dtype)
+            
+            self.hidden_states[indexes] = hidden_states.copy()
+
         self._ptr = (self._ptr + batch_size) % self._max_size
         self._size = min(self._size + batch_size, self._max_size)
     
-    def load_dataset(self, dataset: Dict[str, np.ndarray]) -> None:
+    def load_dataset(self, dataset: Dict[str, np.ndarray], hidden=False) -> None:
         observations = np.array(dataset["observations"], dtype=self.obs_dtype)
         next_observations = np.array(dataset["next_observations"], dtype=self.obs_dtype)
         actions = np.array(dataset["actions"], dtype=self.action_dtype)
         rewards = np.array(dataset["rewards"], dtype=np.float32).reshape(-1, 1)
         terminals = np.array(dataset["terminals"], dtype=np.float32).reshape(-1, 1)
 
-        if self.seq_len > 1:
-            self.observations = sliding_window(observations, window_size = self.seq_len)
-            self.next_observations = sliding_window(next_observations, window_size = self.seq_len)
-            self.actions = sliding_window(actions, window_size = self.seq_len)
-            self.rewards = sliding_window(rewards, window_size = self.seq_len)
-            self.terminals = sliding_window(terminals, window_size = self.seq_len)
-        else:
-            self.observations = observations
-            self.next_observations = next_observations
-            self.actions = actions
-            self.rewards = rewards
-            self.terminals = terminals
+        self.observations = observations
+        self.next_observations = next_observations
+        self.actions = actions
+        self.rewards = rewards
+        self.terminals = terminals
 
         self._ptr = len(observations)
         self._size = len(observations)
+
+        if "full_observations" in dataset:
+            self.full_observations = np.array(dataset["full_observations"], dtype=self.obs_dtype)
+            self.pre_actions = np.array(dataset["pre_actions"], dtype=self.action_dtype)
+            self.full_actions = np.array(dataset["full_actions"], dtype=self.action_dtype)
+            self.time_steps = np.array(dataset["time_step"]).reshape(-1, 1)
+            if hidden:
+                self.hidden_states = np.array(dataset["hidden_states"])
+                self.full_next_observations = np.array(dataset["full_next_observations"], dtype=self.obs_dtype)
+            
      
     def normalize_obs(self, eps: float = 1e-3) -> Tuple[np.ndarray, np.ndarray]:
         mean = self.observations.mean(0, keepdims=True)
@@ -122,14 +140,26 @@ class ReplayBuffer:
 
         batch_indexes = np.random.randint(0, self._size, size=batch_size)
         
-        return {
+        ret = {
             "observations": torch.tensor(self.observations[batch_indexes]).to(self.device),
             "actions": torch.tensor(self.actions[batch_indexes]).to(self.device),
             "next_observations": torch.tensor(self.next_observations[batch_indexes]).to(self.device),
             "terminals": torch.tensor(self.terminals[batch_indexes]).to(self.device),
             "rewards": torch.tensor(self.rewards[batch_indexes]).to(self.device)
         }
-    
+
+        if self.full_observations is not None:
+            ret["full_observations"] = torch.tensor(self.full_observations[batch_indexes]).to(self.device)
+            ret["full_actions"] = torch.tensor(self.full_actions[batch_indexes]).to(self.device)
+            ret["pre_actions"] = torch.tensor(self.pre_actions[batch_indexes]).to(self.device)
+            ret["time_steps"] = torch.tensor(self.time_steps[batch_indexes]).to(self.device)
+        
+        if self.hidden_states is not None:
+            # ret["hidden_states"] = torch.tensor(self.hidden_states[batch_indexes]).permute(1, 2, 0, 3).to(self.device)
+            ret["hidden_states"] = torch.tensor(self.hidden_states[batch_indexes]).to(self.device)
+
+        return ret
+
     def sample_all(self) -> Dict[str, np.ndarray]:
         return {
             "observations": self.observations[:self._size].copy(),
@@ -139,3 +169,91 @@ class ReplayBuffer:
             "rewards": self.rewards[:self._size].copy()
         }
     
+    
+    def sample_rollouts(self, batch_size, rollout_length) -> Dict[str, np.ndarray]:
+        batch_indexes = np.random.randint(0, self._size, size=batch_size)
+        f_obs, f_act, pre_act, time_step, terminal = [], [], [], [], []
+        tmp_terminal = np.zeros_like(self.time_steps[batch_indexes])
+
+        for i in range(rollout_length+1):
+            cur_batch_indexes = batch_indexes + i
+            cur_batch_indexes[cur_batch_indexes >= self._size-1] = self._size-1
+            f_obs.append(self.full_observations[cur_batch_indexes].copy())
+            f_act.append(self.full_actions[cur_batch_indexes].copy())
+            pre_act.append(self.pre_actions[cur_batch_indexes].copy())
+            time_step.append(self.time_steps[cur_batch_indexes].copy())
+            if i >= 1:
+                tmp_terminal[time_step[-1] <= time_step[-2]] = 1
+                terminal.append(tmp_terminal.copy())
+
+        ret = {
+            "full_observations": np.moveaxis(np.array(f_obs)[:-1], source=0, destination=1),
+            "full_actions": np.moveaxis(np.array(f_act)[:-1], source=0, destination=1),
+            "pre_actions": np.moveaxis(np.array(pre_act)[:-1], source=0, destination=1),
+            "time_steps": np.moveaxis(np.array(time_step)[:-1], source=0, destination=1),
+            "terminals": np.moveaxis(np.array(terminal, dtype=bool), source=0, destination=1),
+            "hidden_states": np.moveaxis(self.hidden_states[batch_indexes], source=0, destination=2)
+        }   
+        
+        return ret
+    
+    # def update_hidden_states(self, model):
+    #     tot_len = self.hidden_states.shape[0]
+
+    #     if self.net_input is None:
+    #         temp_net_input = np.concatenate([self.full_observations, self.pre_actions, self.full_actions-self.pre_actions], axis=-1)
+    #         self.net_input = []
+
+    #         net_input = []
+    #         for t in range(tot_len):
+    #             net_input.append(temp_net_input[t])
+    #             if self.terminals[t][0] > 0 or t == (tot_len - 1):
+    #                 self.net_input.append(np.array(net_input))
+    #                 net_input = []
+
+    #     for memb in model.all_models: # TODO: optional
+    #         memb.reset()
+
+    #     s_id = 0
+    #     for i in range(len(self.net_input)):
+    #         e_id = s_id + len(self.net_input[i])
+    #         net_input_tensor = torch.FloatTensor(self.net_input[i]).unsqueeze(0).to(model.device)
+    #         memb_out_list = []
+    #         with torch.no_grad():
+    #             for memb in model.all_models:
+    #                 net_input_n = memb.normalizer.normalize(net_input_tensor, 0)
+    #                 memb_out = memb.get_mem_out(net_input_n) # we have updated the dynamics toolbox
+    #                 memb_out_list.append(memb_out)
+    #         self.hidden_states[s_id:e_id] = torch.stack(memb_out_list).permute(2, 0, 1, 3).cpu().numpy()
+    #         s_id = e_id
+
+    def update_hidden_states(self, model, net_input, len_list):
+        s_id = 0
+        interval = 20
+        size = net_input.shape[0]
+
+        buffer_s_id = 0
+        while s_id < size:
+            e_id = min(s_id+interval, size)
+            net_input_tensor = torch.FloatTensor(net_input[s_id:e_id]).to(model.device)
+
+            memb_out_list = []
+            with torch.no_grad():
+                for memb in model.all_models:
+                    net_input_n = memb.normalizer.normalize(net_input_tensor, 0)
+                    memb_out = memb.get_mem_out(net_input_n).unsqueeze(1) # we have updated the dynamics toolbox
+                    memb_out_list.append(memb_out)
+            temp_hidden_state = torch.stack(memb_out_list, dim=1).permute(0, 3, 1, 2, 4).cpu().numpy()
+
+            temp_hidden_state_list = []
+            for i in range(e_id - s_id):
+                temp_hidden_state_list.append(temp_hidden_state[i][:len_list[s_id+i]])
+            valid_hidden_state = np.concatenate(temp_hidden_state_list, axis=0)
+            buffer_e_id = buffer_s_id + valid_hidden_state.shape[0]
+            self.hidden_states[buffer_s_id:buffer_e_id] = valid_hidden_state.copy()
+            buffer_s_id = buffer_e_id
+
+            s_id = e_id        
+        
+
+

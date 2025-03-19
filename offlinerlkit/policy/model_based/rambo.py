@@ -6,11 +6,10 @@ import os
 
 from torch.nn import functional as F
 from typing import Dict, Union, Tuple
-from collections import defaultdict
 from operator import itemgetter
 from offlinerlkit.utils.scaler import StandardScaler
 from offlinerlkit.policy import MOPOPolicy
-from offlinerlkit.dynamics import BaseDynamics
+from offlinerlkit.buffer import ModelSLReplayBuffer
 
 
 class RAMBOPolicy(MOPOPolicy):
@@ -20,7 +19,7 @@ class RAMBOPolicy(MOPOPolicy):
 
     def __init__(
         self,
-        dynamics: BaseDynamics,
+        dynamics,
         actor: nn.Module,
         critic1: nn.Module,
         critic2: nn.Module,
@@ -28,6 +27,11 @@ class RAMBOPolicy(MOPOPolicy):
         critic1_optim: torch.optim.Optimizer,
         critic2_optim: torch.optim.Optimizer,
         dynamics_adv_optim: torch.optim.Optimizer,
+        state_idxs,
+        action_idxs,
+        sa_processor,
+        model_sl_buffer: ModelSLReplayBuffer,
+        update_hidden_states,
         tau: float = 0.005,
         gamma: float = 0.99,
         alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
@@ -35,6 +39,7 @@ class RAMBOPolicy(MOPOPolicy):
         adv_train_steps: int = 1000,
         adv_rollout_batch_size: int = 256,
         adv_rollout_length: int = 5,
+        sl_batch_size: int = 16,
         include_ent_in_adv: bool = False,
         scaler: StandardScaler = None,
         device="cpu"
@@ -47,17 +52,22 @@ class RAMBOPolicy(MOPOPolicy):
             actor_optim,
             critic1_optim,
             critic2_optim,
+            state_idxs,
+            action_idxs,
+            sa_processor,
             tau=tau,
             gamma=gamma,
             alpha=alpha
         )
-
+        self.model_sl_buffer = model_sl_buffer
         self._dynmics_adv_optim = dynamics_adv_optim
         self._adv_weight = adv_weight
         self._adv_train_steps = adv_train_steps
         self._adv_rollout_batch_size = adv_rollout_batch_size
+        self._sl_batch_size = sl_batch_size
         self._adv_rollout_length = adv_rollout_length
         self._include_ent_in_adv = include_ent_in_adv
+        self._update_hidden_states = update_hidden_states
         self.scaler = scaler
         self.device = device
         
@@ -103,62 +113,119 @@ class RAMBOPolicy(MOPOPolicy):
             "adv_dynamics_update/adv_advantage": 0, 
             "adv_dynamics_update/adv_log_prob": 0, 
         }
-        self.dynamics.model.train()
+        self.dynamics.model.train() # danger
+
         steps = 0
+        print("Start to train the dynamics model......")
         while steps < self._adv_train_steps:
-            init_obss = real_buffer.sample(self._adv_rollout_batch_size)["observations"].cpu().numpy()
-            observations = init_obss
+            init_samples = real_buffer.sample_rollouts(self._adv_rollout_batch_size, self._adv_rollout_length)
+
+            full_observations = init_samples["full_observations"][:, 0]
+            full_actions = init_samples["full_actions"][:, 0]
+            pre_actions = init_samples["pre_actions"][:, 0]
+            time_steps = init_samples["time_steps"][:, 0]
+            time_terminals = init_samples["terminals"][:, 0]
+
+            idx_list = np.array(range(0, init_samples["full_observations"].shape[0]))
+
+            if self._update_hidden_states:
+                self.dynamics.reset(init_samples["hidden_states"]) 
+            else:
+                self.dynamics.reset()
+
+            observations = full_observations[:, self.state_idxs]
+            observations = self.sa_processor.get_rl_state(observations, time_steps)
+            tot_loss = 0.
             for t in range(self._adv_rollout_length):
-                actions = super().select_action(observations)
-                sl_observations, sl_actions, sl_next_observations, sl_rewards = \
-                    itemgetter("observations", "actions", "next_observations", "rewards")(real_buffer.sample(self._adv_rollout_batch_size))
-                next_observations, terminals, loss_info = self.dynamics_step_and_forward(observations, actions, sl_observations, sl_actions, sl_next_observations, sl_rewards)
+                actions = super().select_action(observations) #??
+                step_actions = self.sa_processor.get_step_action(actions)
+                full_actions[:, self.action_idxs] = step_actions.copy()
+
+                sl_input, sl_output, sl_mask = itemgetter("net_input", "net_output", "mask")(self.model_sl_buffer.sample(self._sl_batch_size))
+
+                next_observations, terminals, loss_info, info, t_loss = self.dynamics_step_and_forward(observations, actions, full_observations, full_actions, 
+                                                                                                       pre_actions, time_steps, time_terminals, sl_input, 
+                                                                                                       sl_output, sl_mask)
+                tot_loss += t_loss
+                
                 for _key in loss_info:
                     all_loss_info[_key] += loss_info[_key]
-                # nonterm_mask = (~terminals).flatten()
+
                 steps += 1
-                # observations = next_observations[nonterm_mask]
-                observations = next_observations.copy()
-                # if nonterm_mask.sum() == 0:
-                    # break
-                if steps == 1000:
+                if steps % 500 == 0:
+                    print("Halfway......")
+
+                nonterm_mask = (~terminals[idx_list]).flatten()
+                if nonterm_mask.sum() == 0 or steps >= 1000:
                     break
+                
+                observations = next_observations
+                full_observations = info["next_full_observations"]
+                time_steps = info["next_time_steps"]
+                pre_actions = full_actions.copy()
+
+                if t < self._adv_rollout_length - 1:
+                    idx_list = idx_list[nonterm_mask]
+                    full_actions = init_samples["full_actions"][:, t+1]
+                    time_terminals = init_samples["terminals"][:, t+1]
+            
+            self._dynmics_adv_optim.zero_grad()
+            tot_loss.backward() # TODO: update with sl_loss separately
+            self._dynmics_adv_optim.step()
+
+            # TODO: this may be too costly
+            # print("Updating the hidden_states......")
+            if self._update_hidden_states:
+                real_buffer.update_hidden_states(self.dynamics.model, self.model_sl_buffer.net_input, self.model_sl_buffer.len_list)
+                # real_buffer.update_hidden_states(self.dynamics.model)
+
         self.dynamics.model.eval()
         return {_key: _value/steps for _key, _value in all_loss_info.items()}
 
     def dynamics_step_and_forward(
         self,
-        observations,
-        actions,
-        sl_observations,
-        sl_actions,
-        sl_next_observations,
-        sl_rewards,
+        observations, 
+        actions, 
+        full_observations, 
+        full_actions, 
+        pre_actions, 
+        time_steps,
+        time_terminals, 
+        sl_input, 
+        sl_output, 
+        sl_mask
     ):
-        obs_act = np.concatenate([observations, actions], axis=-1)
-        obs_act = self.dynamics.scaler.transform(obs_act)
-        diff_mean, logvar = self.dynamics.model(obs_act)
-        observations = torch.from_numpy(observations).to(diff_mean.device)
-        diff_obs, diff_reward = torch.split(diff_mean, [diff_mean.shape[-1]-1, 1], dim=-1)
-        mean = torch.cat([diff_obs + observations, diff_reward], dim=-1)
-        std = torch.sqrt(torch.exp(logvar))
-        
+        net_input = np.concatenate([full_observations, pre_actions, full_actions-pre_actions], axis=-1)
+        mean, std = self.dynamics.model.forward(torch.tensor(net_input, device=self.device), is_tensor=True, with_grad=True)
+        full_observations = torch.from_numpy(full_observations).to(self.device)
+        mean += full_observations
+
         dist = torch.distributions.Normal(mean, std)
         ensemble_sample = dist.sample()
-        ensemble_size, batch_size, _ = ensemble_sample.shape
-        
-        # select the next observations
-        selected_indexes = self.dynamics.model.random_elite_idxs(batch_size)
-        sample = ensemble_sample[selected_indexes, np.arange(batch_size)]
-        next_observations = sample[..., :-1]
-        rewards = sample[..., -1:]
-        terminals = self.dynamics.terminal_fn(observations.detach().cpu().numpy(), actions, next_observations.detach().cpu().numpy())
+        ensemble_size, batch_size, output_size = ensemble_sample.shape
 
-        # compute logprob
+        # select the next observations
+        info = {}
+        selected_indexes = self.dynamics.model.random_member_idxs(batch_size)
+        sample = ensemble_sample[selected_indexes, np.arange(batch_size)]
+        full_next_observations = sample
+        info["next_full_observations"] = sample.cpu().numpy()
+        time_steps = time_steps + 1
+        info["next_time_steps"] = time_steps.copy()
+
+        # get the reward
+        next_observations = full_next_observations[:, self.state_idxs]
+        rewards = self.dynamics.reward_fn(next_observations.cpu().numpy(), time_steps.reshape(-1)).reshape(-1, 1)
+        next_observations = self.sa_processor.get_rl_state(next_observations, time_steps.reshape(-1))
+
+        # get the termination signal
+        terminals = self.dynamics.terminal_fn(time_steps)
+        terminals = terminals | time_terminals
+
+        # compute logprob, danger, TODO: select action_idxs
         log_prob = dist.log_prob(sample).sum(-1, keepdim=True)
-        log_prob = log_prob[self.dynamics.model.elites.data, ...]
         prob = log_prob.double().exp()
-        prob = prob * (1/len(self.dynamics.model.elites.data))
+        prob = prob * (1.0/log_prob.shape[0])
         log_prob = prob.sum(0).log().type(torch.float32)
 
         # compute the advantage
@@ -171,7 +238,7 @@ class RAMBOPolicy(MOPOPolicy):
             if self._include_ent_in_adv:
                 next_q = next_q - self._alpha * next_policy_log_prob
 
-            value = rewards + (1-torch.from_numpy(terminals).to(mean.device).float()) * self._gamma * next_q
+            value = torch.from_numpy(rewards).to(self.device) + (1-torch.from_numpy(terminals).to(self.device).float()) * self._gamma * next_q
 
             value_baseline = torch.minimum(
                 self.critic1(observations, actions), 
@@ -180,23 +247,22 @@ class RAMBOPolicy(MOPOPolicy):
             advantage = value - value_baseline
             advantage = (advantage - advantage.mean()) / (advantage.std()+1e-6)
         adv_loss = (log_prob * advantage).mean()
+    
+        # compute the supervised loss, as used in the dynamics toolbox
+        sl_loss = self.dynamics.model.get_sl_loss(sl_input, sl_output, sl_mask)    
 
-        # compute the supervised loss
-        sl_input = torch.cat([sl_observations, sl_actions], dim=-1).cpu().numpy()
-        sl_target = torch.cat([sl_next_observations-sl_observations, sl_rewards], dim=-1)
-        sl_input = self.dynamics.scaler.transform(sl_input)
-        sl_mean, sl_logvar = self.dynamics.model(sl_input)
-        sl_inv_var = torch.exp(-sl_logvar)
-        sl_mse_loss_inv = (torch.pow(sl_mean - sl_target, 2) * sl_inv_var).mean(dim=(1, 2))
-        sl_var_loss = sl_logvar.mean(dim=(1, 2))
-        sl_loss = sl_mse_loss_inv.sum() + sl_var_loss.sum()
-        sl_loss = sl_loss + self.dynamics.model.get_decay_loss()
-        sl_loss = sl_loss + 0.001 * self.dynamics.model.max_logvar.sum() - 0.001 * self.dynamics.model.min_logvar.sum()
+        # sl_mean, sl_logvar = self.dynamics.model(sl_input)
+        # sl_inv_var = torch.exp(-sl_logvar)
+        # sl_mse_loss_inv = (torch.pow(sl_mean - sl_target, 2) * sl_inv_var).mean(dim=(1, 2))
+        # sl_var_loss = sl_logvar.mean(dim=(1, 2))
+        # sl_loss = sl_mse_loss_inv.sum() + sl_var_loss.sum()
+        # sl_loss = sl_loss + self.dynamics.model.get_decay_loss()
+        # sl_loss = sl_loss + 0.001 * self.dynamics.model.max_logvar.sum() - 0.001 * self.dynamics.model.min_logvar.sum()
 
         all_loss = self._adv_weight * adv_loss + sl_loss
-        self._dynmics_adv_optim.zero_grad()
-        all_loss.backward()
-        self._dynmics_adv_optim.step()
+        # self._dynmics_adv_optim.zero_grad()
+        # all_loss.backward()
+        # self._dynmics_adv_optim.step() # TODO: do the step here
 
         return next_observations.cpu().numpy(), terminals, {
             "adv_dynamics_update/all_loss": all_loss.cpu().item(), 
@@ -204,43 +270,7 @@ class RAMBOPolicy(MOPOPolicy):
             "adv_dynamics_update/adv_loss": adv_loss.cpu().item(), 
             "adv_dynamics_update/adv_advantage": advantage.mean().cpu().item(), 
             "adv_dynamics_update/adv_log_prob": log_prob.mean().cpu().item(), 
-        }
-
-    def rollout(
-        self,
-        init_obss: np.ndarray,
-        rollout_length: int
-    ) -> Tuple[Dict[str, np.ndarray], Dict]:
-
-        num_transitions = 0
-        rewards_arr = np.array([])
-        rollout_transitions = defaultdict(list)
-
-        # rollout
-        observations = init_obss
-        for _ in range(rollout_length):
-            actions = super().select_action(observations)
-            next_observations, rewards, terminals, info = self.dynamics.step(observations, actions)
-            rollout_transitions["obss"].append(observations)
-            rollout_transitions["next_obss"].append(next_observations)
-            rollout_transitions["actions"].append(actions)
-            rollout_transitions["rewards"].append(rewards)
-            rollout_transitions["terminals"].append(terminals)
-
-            num_transitions += len(observations)
-            rewards_arr = np.append(rewards_arr, rewards.flatten())
-
-            nonterm_mask = (~terminals).flatten()
-            if nonterm_mask.sum() == 0:
-                break
-
-            observations = next_observations[nonterm_mask]
-        
-        for k, v in rollout_transitions.items():
-            rollout_transitions[k] = np.concatenate(v, axis=0)
-
-        return rollout_transitions, \
-            {"num_transitions": num_transitions, "reward_mean": rewards_arr.mean()}
+        }, info, all_loss
 
     def select_action(self, obs: np.ndarray, deterministic: bool = False) -> np.ndarray:
         if self.scaler is not None:

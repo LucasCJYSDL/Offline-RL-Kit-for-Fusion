@@ -61,8 +61,9 @@ class MBPolicyTrainer:
             pbar = tqdm(range(self._step_per_epoch), desc=f"Epoch #{e}/{self._epoch}")
             for it in pbar:
                 if num_timesteps % self._rollout_freq == 0:
-                    init_obss = self.real_buffer.sample(self._rollout_batch_size)["observations"].cpu().numpy()
-                    rollout_transitions, rollout_info = self.policy.rollout(init_obss, self._rollout_length) # ipt
+                    init_samples = self.real_buffer.sample_rollouts(self._rollout_batch_size, self._rollout_length)
+                    rollout_transitions, rollout_info = self.policy.rollout(init_samples) # ipt
+ 
                     self.fake_buffer.add_batch(**rollout_transitions)
                     self.logger.log(
                         "num rollout transitions: {}, reward mean: {:.4f}".\
@@ -82,7 +83,7 @@ class MBPolicyTrainer:
                 for k, v in loss.items():
                     self.logger.logkv_mean(k, v)
                 
-                # update the dynamics if necessary
+                # update the dynamics if necessary, for rambo
                 if 0 < self._dynamics_update_freq and (num_timesteps+1)%self._dynamics_update_freq == 0:
                     dynamics_update_info = self.policy.update_dynamics(self.real_buffer)
                     for k, v in dynamics_update_info.items():
@@ -112,7 +113,7 @@ class MBPolicyTrainer:
 
         self.logger.log("total time: {:.2f}s".format(time.time() - start_time))
         torch.save(self.policy.state_dict(), os.path.join(self.logger.model_dir, "policy.pth"))
-        self.policy.dynamics.save(self.logger.model_dir)
+        # self.policy.dynamics.save(self.logger.model_dir)
         self.logger.close()
     
         return {"last_10_performance": np.mean(last_10_performance)}
@@ -125,8 +126,9 @@ class MBPolicyTrainer:
         episode_reward, episode_length = 0, 0
 
         while num_episodes < self._eval_episodes:
-            action = self.policy.select_action(obs.reshape(1, -1), deterministic=True)
-            next_obs, reward, terminal, _ = self.eval_env.step(action.flatten())
+            action = self.policy.select_action(obs, deterministic=True)
+            next_obs, reward, terminal, _ = self.eval_env.step(action)
+
             episode_reward += reward
             episode_length += 1
 

@@ -5,7 +5,6 @@ import torch.nn as nn
 from typing import Dict, Union, Tuple
 from collections import defaultdict
 from offlinerlkit.policy import MOBILEPolicy
-from offlinerlkit.dynamics import BaseDynamics
 from offlinerlkit.utils.searcher import Searcher
 from offlinerlkit.utils.scheduler import LinearParameter
 from offlinerlkit.buffer import SLReplaBuffer, SL_Transition
@@ -15,8 +14,6 @@ class BAMBRLPolicy(MOBILEPolicy):
 
     def __init__(
         self,
-        elite_only: bool,
-        elite_list: bool,
         use_ba: bool,
         use_search: bool,
         search_ratio: float,
@@ -24,11 +21,14 @@ class BAMBRLPolicy(MOBILEPolicy):
         searcher: Searcher,
         sl_buffer: SLReplaBuffer,
         entropy_coe_scheduler: LinearParameter,
-        dynamics: BaseDynamics,
+        dynamics,
         actor: nn.Module,
         critics: nn.ModuleList,
         actor_optim: torch.optim.Optimizer,
         critics_optim: torch.optim.Optimizer,
+        state_idxs,
+        action_idxs,
+        sa_processor,
         tau: float = 0.005,
         gamma: float  = 0.99,
         alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
@@ -38,10 +38,9 @@ class BAMBRLPolicy(MOBILEPolicy):
         max_q_backup: bool = False
     ) -> None:
 
-        super().__init__(dynamics, actor, critics, actor_optim, critics_optim, tau, gamma, 
-                         alpha, penalty_coef, num_samples, deterministic_backup, max_q_backup)
-        self._elite_only = elite_only
-        self._elite_list = elite_list
+        super().__init__(dynamics, actor, critics, actor_optim, critics_optim, state_idxs,
+                         action_idxs, sa_processor, tau, gamma, alpha, penalty_coef, num_samples, 
+                         deterministic_backup, max_q_backup)
         self._use_ba = use_ba
         self._use_search = use_search
         self._search_ratio = search_ratio
@@ -83,22 +82,32 @@ class BAMBRLPolicy(MOBILEPolicy):
             return action.cpu().numpy()
         return action.cpu().numpy(), dists
     
-    def _get_action(self, observations, priors):
+    def _get_action(self, observations, priors, full_observations, pre_actions, time_steps, full_actions_list, time_terminals_list, hidden_states):
+
         actions, logits = self.select_action(observations, return_dists=True)
         # using MCTS
         search_size = int(observations.shape[0] * self._search_ratio)
         # TODO: try different forms of randomness
         search_idx = np.random.choice(observations.shape[0], size=search_size, replace=False)
         # search_idx = np.arange(search_size)
+
         obs_input = observations[search_idx]
         prior_input = priors[:, search_idx]
         logits[0] = logits[0][search_idx].cpu().numpy()
         logits[1] = torch.nan_to_num(logits[1][search_idx], nan=1e-6).cpu().numpy()
+
+        # new for fusion
+        full_obs_input = full_observations[search_idx]
+        pre_act_input = pre_actions[search_idx]
+        time_input = time_steps[search_idx]
+        hidden_states_input = hidden_states[search_idx]
     
         tree_roots = self._searcher.set_roots(search_size)
-        self._searcher.prepare(tree_roots, prior_input, obs_input, logits)
+        self._searcher.prepare(tree_roots, prior_input, obs_input, logits, full_obs_input, pre_act_input, time_input, hidden_states_input)
+
         print("Start searching ...")
-        self._searcher.search(tree_roots, self.get_search_quantity)
+        self._searcher.search(tree_roots, full_actions_list[search_idx], time_terminals_list[search_idx], 
+                              hidden_states_input, self.get_search_quantity)
 
         print("Start sampling ...")
         searched_actions, action_dists, action_lists, q_list = self._searcher.sample(tree_roots)
@@ -110,7 +119,7 @@ class BAMBRLPolicy(MOBILEPolicy):
         return actions
     
     @ torch.no_grad()
-    def get_search_quantity(self, state_batch, action_batch, prior_batch, nextstate_batch):
+    def get_search_quantity(self, full_state_batch, pre_action_batch, full_action_batch, time_step_batch, hidden_state_batch, nextstate_batch):
         # get quantities for expansion 
         nextstate_batch = torch.FloatTensor(nextstate_batch).to(self._device)
         q_target, logprobs_batch, logits = self._get_next_q(nextstate_batch, return_dists=True)
@@ -121,11 +130,12 @@ class BAMBRLPolicy(MOBILEPolicy):
         logits[1] = logits[1].cpu().numpy()
 
         # get reward penalty
-        state_batch = torch.FloatTensor(state_batch).to(self._device)
-        action_batch = torch.FloatTensor(action_batch).to(self._device)
-        prior_batch = torch.FloatTensor(prior_batch).to(self._device)
-        # penalty = self.compute_lcb(state_batch, action_batch, prior_batch)
-        penalty = self.compute_lcb(state_batch, action_batch)
+        full_state_batch = torch.FloatTensor(full_state_batch).to(self._device)
+        pre_action_batch = torch.FloatTensor(pre_action_batch).to(self._device)
+        full_action_batch = torch.FloatTensor(full_action_batch).to(self._device)
+        time_step_batch = torch.FloatTensor(time_step_batch).to(self._device)
+        # hidden_state_batch = torch.FloatTensor(hidden_state_batch).to(self._device)
+        penalty = self.compute_lcb(full_state_batch, pre_action_batch, full_action_batch, time_step_batch, hidden_state_batch)
         
         if isinstance(self._alpha, float):
             augment = - self._alpha * self._gamma * logprobs_batch
@@ -136,9 +146,7 @@ class BAMBRLPolicy(MOBILEPolicy):
 
     def rollout(
         self,
-        init_obss: np.ndarray,
-        init_priors: np.ndarray,
-        rollout_length: int
+        init_samples
     ) -> Tuple[Dict[str, np.ndarray], Dict]:
 
         num_transitions = 0
@@ -146,16 +154,41 @@ class BAMBRLPolicy(MOBILEPolicy):
         rollout_transitions = defaultdict(list)
 
         # rollout
-        observations = init_obss
-        priors = init_priors.T
-        for _ in range(rollout_length):
+        rollout_length = init_samples["rollout_length"]
+        idx_list = np.array(range(0, init_samples["full_observations"].shape[0]))
+
+        full_observations = init_samples["full_observations"]
+        pre_actions = init_samples["pre_actions"]
+        priors = init_samples["priors"].T
+
+        time_steps = init_samples["time_steps"][:, 0]
+        full_actions = init_samples["full_actions"][:, 0]
+        time_terminals = init_samples["terminals"][:, 0]
+
+        self.dynamics.reset(init_samples["hidden_states"]) #TODO: initialize the hidden parameters
+
+        for t in range(rollout_length):
+            observations = full_observations[:, self.state_idxs]
+            observations = self.sa_processor.get_rl_state(observations, time_steps)
             if self._use_search:
-                actions = self._get_action(observations, priors)
+                temp_hidden_states = self.dynamics.get_memory()
+                active_actions = self._get_action(observations[idx_list], priors[:, idx_list], full_observations[idx_list], pre_actions[idx_list], time_steps[idx_list], 
+                                                  init_samples["full_actions"][idx_list], init_samples["terminals"][idx_list], temp_hidden_states[idx_list])
+                actions = np.zeros((observations.shape[0], active_actions.shape[-1]), dtype=np.float32)
+                actions[idx_list] = active_actions
+
+                self.dynamics.reset(np.moveaxis(temp_hidden_states, source=0, destination=2))
             else:
                 actions = self.select_action(observations)
-            # print(observations.shape, actions.shape, priors.shape)
-            # (50000, 17) (50000, 6) (7, 50000)
-            next_observations, rewards, terminals, info = self.dynamics.step(priors, observations, actions, self._elite_only, self._elite_list)
+            step_actions = self.sa_processor.get_step_action(actions)
+            full_actions[:, self.action_idxs] = step_actions.copy()
+
+            # new for mobile/bambrl
+            rollout_transitions["hidden_states"].append(self.dynamics.get_memory()[idx_list])
+
+            next_observations, rewards, terminals, info = self.dynamics.step(priors, full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs)
+            next_observations = self.sa_processor.get_rl_state(next_observations, info["next_time_steps"])
+
             # update the priors
             if self._use_ba:
                 prods = info['likelihood'] * priors
@@ -163,22 +196,37 @@ class BAMBRLPolicy(MOBILEPolicy):
             else:
                 next_priors = priors
             
-            rollout_transitions["obss"].append(observations)
-            rollout_transitions["next_obss"].append(next_observations)
-            rollout_transitions["actions"].append(actions)
-            rollout_transitions["rewards"].append(rewards)
-            rollout_transitions["terminals"].append(terminals)
-            rollout_transitions["priors"].append(priors.T)
+            rollout_transitions["obss"].append(observations[idx_list])
+            rollout_transitions["next_obss"].append(next_observations[idx_list])
+            rollout_transitions["actions"].append(actions[idx_list])
+            rollout_transitions["rewards"].append(rewards[idx_list])
+            rollout_transitions["terminals"].append(terminals[idx_list])
 
-            num_transitions += len(observations)
-            rewards_arr = np.append(rewards_arr, rewards.flatten())
+            # new for mobile/bambrl
+            rollout_transitions["full_obss"].append(full_observations[idx_list])
+            rollout_transitions["full_actions"].append(full_actions[idx_list])
+            rollout_transitions["pre_actions"].append(pre_actions[idx_list])
+            rollout_transitions["time_steps"].append(time_steps[idx_list])
 
-            nonterm_mask = (~terminals).flatten()
+            # new for bamcrl
+            rollout_transitions["priors"].append(priors.T[idx_list])
+
+            num_transitions += len(idx_list)
+            rewards_arr = np.append(rewards_arr, rewards[idx_list].flatten())
+
+            nonterm_mask = (~terminals[idx_list]).flatten()
             if nonterm_mask.sum() == 0:
                 break
-
-            observations = next_observations[nonterm_mask]
-            priors = next_priors[:, nonterm_mask]
+            
+            # danger
+            full_observations = info["next_full_observations"]
+            time_steps = info["next_time_steps"]
+            pre_actions = full_actions.copy()
+            priors = next_priors
+            if t < rollout_length - 1:
+                idx_list = idx_list[nonterm_mask]
+                full_actions = init_samples["full_actions"][:, t+1]
+                time_terminals = init_samples["terminals"][:, t+1]
         
         for k, v in rollout_transitions.items():
             rollout_transitions[k] = np.concatenate(v, axis=0)
@@ -251,11 +299,12 @@ class BAMBRLPolicy(MOBILEPolicy):
         obss, actions, next_obss, rewards, terminals, priors = mix_batch["observations"], mix_batch["actions"], mix_batch["next_observations"], \
                                                                mix_batch["rewards"], mix_batch["terminals"], mix_batch["priors"]
         batch_size = obss.shape[0]
+
         # update critic
         qs = torch.stack([critic(obss, actions) for critic in self.critics], 0)
         with torch.no_grad():
             # penalty = self.compute_lcb(obss, actions, priors)
-            penalty = self.compute_lcb(obss, actions)
+            penalty = self.compute_lcb(mix_batch["full_observations"], mix_batch["pre_actions"], mix_batch["full_actions"], mix_batch["time_steps"], mix_batch["hidden_states"])
             penalty[:len(real_batch["rewards"])] = 0.0 # ipt
 
             next_q = self._get_next_q(next_obss)

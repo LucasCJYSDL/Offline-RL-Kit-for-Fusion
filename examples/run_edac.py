@@ -1,8 +1,7 @@
 import argparse
 import random
 
-import gym
-import d4rl
+from gym.spaces import Box
 
 import numpy as np
 import torch
@@ -12,12 +11,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, EnsembleCritic, TanhDiagGaussian
-from offlinerlkit.utils.load_dataset import qlearning_dataset
 from offlinerlkit.buffer import ReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import EDACPolicy
-
+from envs.fusion import SA_processor, NFEnv, load_offline_data
+current_directory = os.getcwd()
 
 """
 suggested hypers
@@ -37,8 +36,6 @@ walker2d-medium-expert-v2: num-critics=10, eta=5.0
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo-name", type=str, default="edac")
-    parser.add_argument("--task", type=str, default="hopper-medium-v2")
-    parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--actor-lr", type=float, default=1e-4)
     parser.add_argument("--critic-lr", type=float, default=3e-4)
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256, 256])
@@ -58,22 +55,43 @@ def get_args():
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
+
+    parser.add_argument("--task", type=str, default="betan_EFIT01")
+    parser.add_argument("--seed", type=int, default=1)
+    # parser.add_argument("--offline_data_dir", type=str, default=current_directory + '/data/nf_data.h5') # must run from the examples folder
+    parser.add_argument("--raw_data_dir", type=str, default='/zfsauton/project/fusion/data/organized/noshape_gas_flat_top/') # must run from the examples folder
+    parser.add_argument('--rnn_model_dir', type=str, default='/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar') #?
+    parser.add_argument("--use_partial", type=bool, default=True)
+    parser.add_argument("--cuda_id", type=int, default=1)
 
     return parser.parse_args()
 
 
 def train(args=get_args()):
-    # create env and dataset
-    env = gym.make(args.task)
-    dataset = qlearning_dataset(env)
-    if args.normalize_reward:
-        mu, std = dataset["rewards"].mean(), dataset["rewards"].std()
-        dataset["rewards"] = (dataset["rewards"] - mu) / (std + 1e-3)
 
-    args.obs_shape = env.observation_space.shape
-    args.action_dim = np.prod(env.action_space.shape)
-    args.max_action = env.action_space.high[0]
+    ############################# Modified #################################
+    args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
+    args.offline_data_dir = args.raw_data_dir + 'processed_data_rl.h5'
+    offline_data = load_offline_data(args.offline_data_dir, args.raw_data_dir, args.task, args.use_partial)
+    sa_processor = SA_processor(bounds=(offline_data['action_lower_bounds'], offline_data['action_upper_bounds']), \
+                                time_limit=offline_data['tracking_ref'].shape[0], device=args.device)
+    env = NFEnv(args.rnn_model_dir, args.device, offline_data['tracking_ref'], offline_data['tracking_states'], \
+                offline_data['tracking_pre_actions'], offline_data['tracking_actions'], offline_data['index_list'], \
+                sa_processor, offline_data["state_idxs"], offline_data["action_idxs"])
+    
+    # collect the data for rl training
+    offline_data['rewards'] = env.get_reward(offline_data['observations'], offline_data['time_step'])
+    offline_data['actions'] = sa_processor.normalize_action(offline_data['actions'])
+    offline_data['observations'] = np.concatenate([offline_data['observations'], offline_data['time_step'][:, np.newaxis]/float(sa_processor.time_limit)], axis=1)
+    offline_data['next_observations'] = np.concatenate([offline_data['next_observations'], (offline_data['time_step'][:, np.newaxis]+1)/float(sa_processor.time_limit)], axis=1)
+
+    print(offline_data['observations'].shape, offline_data['next_observations'].shape, offline_data['time_step'].shape, offline_data['rewards'].shape, offline_data['actions'].shape)
+
+    args.obs_shape = (offline_data['observations'].shape[1], )
+    args.action_dim = offline_data['actions'].shape[1]
+    args.max_action = 1.0
+    action_space = Box(low=-args.max_action, high=args.max_action, shape=(args.action_dim, ), dtype=np.float32)
+    ############################# Modified End #################################
 
     # seed
     random.seed(args.seed)
@@ -108,7 +126,7 @@ def train(args=get_args()):
 
     if args.auto_alpha:
         target_entropy = args.target_entropy if args.target_entropy \
-            else -np.prod(env.action_space.shape)
+            else -np.prod(action_space.shape)
         args.target_entropy = target_entropy
         log_alpha = torch.zeros(1, requires_grad=True, device=args.device)
         alpha_optim = torch.optim.Adam([log_alpha], lr=args.alpha_lr)
@@ -132,14 +150,14 @@ def train(args=get_args()):
 
     # create buffer
     buffer = ReplayBuffer(
-        buffer_size=len(dataset["observations"]),
+        buffer_size=offline_data["observations"].shape[0], 
         obs_shape=args.obs_shape,
         obs_dtype=np.float32,
         action_dim=args.action_dim,
         action_dtype=np.float32,
         device=args.device
     )
-    buffer.load_dataset(dataset)
+    buffer.load_dataset(offline_data)
 
     # log
     log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["num_critics", "eta"])
@@ -151,7 +169,7 @@ def train(args=get_args()):
         "tb": "tensorboard"
     }
     logger = Logger(log_dirs, output_config)
-    logger.log_hyperparameters(vars(args))
+    # logger.log_hyperparameters(vars(args))
 
     # create policy trainer
     policy_trainer = MFPolicyTrainer(

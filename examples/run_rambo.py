@@ -1,9 +1,6 @@
 import argparse
 import random
 
-import gym
-import d4rl
-
 import numpy as np
 import torch
 
@@ -14,12 +11,13 @@ from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian, EnsembleDynamicsModel
 from offlinerlkit.dynamics import EnsembleDynamics
 from offlinerlkit.utils.scaler import StandardScaler
-from offlinerlkit.utils.termination_fns import get_termination_fn, obs_unnormalization
-from offlinerlkit.buffer import ReplayBuffer
+from offlinerlkit.buffer import ReplayBuffer, ModelSLReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MBPolicyTrainer
 from offlinerlkit.policy import RAMBOPolicy
 
+from envs.fusion import SA_processor, NFEnv, load_offline_data
+current_directory = os.getcwd() #?
 
 """
 suggested hypers
@@ -39,11 +37,9 @@ walker2d-medium-expert-v2: rollout-length=2, adv-weight=3e-4
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--algo-name", type=str, default="rambo")
-    parser.add_argument("--task", type=str, default="hopper-medium-v2")
-    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--actor-lr", type=float, default=1e-4)
     parser.add_argument("--critic-lr", type=float, default=3e-4)
-    parser.add_argument("--dynamics-lr", type=float, default=3e-4)
+    # parser.add_argument("--dynamics-lr", type=float, default=3e-4)
     parser.add_argument("--dynamics-adv-lr", type=float, default=3e-4)
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256])
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -53,25 +49,21 @@ def get_args():
     parser.add_argument("--target-entropy", type=int, default=None)
     parser.add_argument("--alpha-lr", type=float, default=1e-4)
 
-    parser.add_argument("--dynamics-hidden-dims", type=int, nargs='*', default=[200, 200, 200, 200])
-    parser.add_argument("--dynamics-weight-decay", type=float, nargs='*', default=[2.5e-5, 5e-5, 7.5e-5, 7.5e-5, 1e-4])
-    parser.add_argument("--n-ensemble", type=int, default=7)
-    parser.add_argument("--n-elites", type=int, default=5)
+    # parser.add_argument("--dynamics-weight-decay", type=float, nargs='*', default=[2.5e-5, 5e-5, 7.5e-5, 7.5e-5, 1e-4]) # TODO
     parser.add_argument("--rollout-freq", type=int, default=250)
-    parser.add_argument("--dynamics-update-freq", type=int, default=1000)
+    parser.add_argument("--dynamics-update-freq", type=int, default=1000) #??
     parser.add_argument("--adv-batch-size", type=int, default=256)
+    parser.add_argument("--sl-batch-size", type=int, default=8)
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
     parser.add_argument("--rollout-length", type=int, default=5)
-    parser.add_argument("--adv-weight", type=float, default=3e-4)
+    parser.add_argument("--adv-weight", type=float, default=3e-4) #??
     parser.add_argument("--model-retain-epochs", type=int, default=5)
     parser.add_argument("--real-ratio", type=float, default=0.5)
-    parser.add_argument("--load-dynamics-path", type=str, default=None)
 
     parser.add_argument("--epoch", type=int, default=2000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
 
     parser.add_argument("--include-ent-in-adv", type=bool, default=False)
     parser.add_argument("--load-bc-path", type=str, default=None)
@@ -79,16 +71,39 @@ def get_args():
     parser.add_argument("--bc-epoch", type=int, default=50)
     parser.add_argument("--bc-batch-size", type=int, default=256)
 
+    parser.add_argument("--task", type=str, default="betan_EFIT01") #?
+    parser.add_argument("--seed", type=int, default=1)
+    parser.add_argument("--raw_data_dir", type=str, default='/zfsauton/project/fusion/data/organized/noshape_gas_flat_top/') # must run from the examples folder
+    parser.add_argument('--rnn_model_dir', type=str, default='/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar') #?
+    parser.add_argument("--use_partial", type=bool, default=True)
+    parser.add_argument("--update_hidden_states", type=bool, default=True)
+    parser.add_argument("--cuda_id", type=int, default=0)
+
     return parser.parse_args()
 
 
 def train(args=get_args()):
     # create env and dataset
-    env = gym.make(args.task)
-    dataset = d4rl.qlearning_dataset(env)
-    args.obs_shape = env.observation_space.shape
-    args.action_dim = np.prod(env.action_space.shape)
-    args.max_action = env.action_space.high[0]
+    args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
+    args.offline_data_dir = args.raw_data_dir + 'processed_data_rl.h5'
+    offline_data = load_offline_data(args.offline_data_dir, args.raw_data_dir, args.task, args.use_partial)
+    sa_processor = SA_processor(bounds=(offline_data['action_lower_bounds'], offline_data['action_upper_bounds']), \
+                                time_limit=offline_data['tracking_ref'].shape[0], device=args.device)
+    env = NFEnv(args.rnn_model_dir, args.device, offline_data['tracking_ref'], offline_data['tracking_states'], \
+                offline_data['tracking_pre_actions'], offline_data['tracking_actions'], offline_data['index_list'], \
+                sa_processor, offline_data["state_idxs"], offline_data["action_idxs"])
+    
+    # collect the data for rl training
+    offline_data['rewards'] = env.get_reward(offline_data['observations'], offline_data['time_step'])
+    offline_data['actions'] = sa_processor.normalize_action(offline_data['actions'])
+    offline_data['observations'] = np.concatenate([offline_data['observations'], offline_data['time_step'][:, np.newaxis]/float(sa_processor.time_limit)], axis=1)
+    offline_data['next_observations'] = np.concatenate([offline_data['next_observations'], (offline_data['time_step'][:, np.newaxis]+1)/float(sa_processor.time_limit)], axis=1)
+
+    print(offline_data['observations'].shape, offline_data['next_observations'].shape, offline_data['time_step'].shape, offline_data['rewards'].shape, offline_data['actions'].shape)
+
+    args.obs_shape = (offline_data['observations'].shape[1], )
+    args.action_dim = offline_data['actions'].shape[1]
+    args.max_action = 1.0
 
     # seed
     random.seed(args.seed)
@@ -118,7 +133,7 @@ def train(args=get_args()):
     
     if args.auto_alpha:
         target_entropy = args.target_entropy if args.target_entropy \
-            else -np.prod(env.action_space.shape)
+            else -args.action_dim
 
         args.target_entropy = target_entropy
 
@@ -130,15 +145,16 @@ def train(args=get_args()):
 
     # create buffer
     real_buffer = ReplayBuffer(
-        buffer_size=len(dataset["observations"]),
+        buffer_size=len(offline_data["observations"]),
         obs_shape=args.obs_shape,
         obs_dtype=np.float32,
         action_dim=args.action_dim,
         action_dtype=np.float32,
         device=args.device
     )
-    real_buffer.load_dataset(dataset)
-    obs_mean, obs_std = real_buffer.normalize_obs()
+    real_buffer.load_dataset(offline_data, hidden=True)
+
+    # obs_mean, obs_std = real_buffer.normalize_obs() # TODO
     fake_buffer_size = args.step_per_epoch // args.rollout_freq * args.model_retain_epochs * args.rollout_batch_size * args.rollout_length
     fake_buffer = ReplayBuffer(
         buffer_size=fake_buffer_size, 
@@ -148,37 +164,38 @@ def train(args=get_args()):
         action_dtype=np.float32,
         device=args.device
     )
+
+    # the buffer for sl of the dynamics model
+    model_sl_buffer = ModelSLReplayBuffer()
+    model_sl_buffer.load_datasets(offline_data)
     
     # create dynamics
     dynamics_model = EnsembleDynamicsModel(
-        obs_dim=np.prod(args.obs_shape),
-        action_dim=args.action_dim,
-        hidden_dims=args.dynamics_hidden_dims,
-        num_ensemble=args.n_ensemble,
-        num_elites=args.n_elites,
-        weight_decays=args.dynamics_weight_decay,
+        model_path=args.rnn_model_dir,
+        output_dim=offline_data["full_observations"].shape[-1],
         device=args.device
     )
-    dynamics_optim = torch.optim.Adam(
-        dynamics_model.parameters(),
-        lr=args.dynamics_lr
-    )
+    # dynamics_optim = torch.optim.Adam(
+    #     dynamics_model.parameters(),
+    #     lr=args.dynamics_lr
+    # )
     dynamics_adv_optim = torch.optim.Adam(
         dynamics_model.parameters(), 
         lr=args.dynamics_adv_lr
     )
-    dynamics_scaler = StandardScaler()
-    termination_fn = obs_unnormalization(get_termination_fn(task=args.task), obs_mean, obs_std)
+
+    # dynamics_scaler = StandardScaler()
+    # termination_fn = obs_unnormalization(get_termination_fn(task=args.task), obs_mean, obs_std)
+    termination_fn = env.is_done
+    reward_fn = env.get_reward
     dynamics = EnsembleDynamics(
         dynamics_model,
-        dynamics_optim,
-        dynamics_scaler,
         termination_fn,
+        reward_fn
     )
 
-    policy_scaler = StandardScaler(mu=obs_mean, std=obs_std)
-
     # create policy
+    # policy_scaler = StandardScaler(mu=obs_mean, std=obs_std) #TODO
     policy = RAMBOPolicy(
         dynamics, 
         actor, 
@@ -188,14 +205,20 @@ def train(args=get_args()):
         critic1_optim, 
         critic2_optim, 
         dynamics_adv_optim,
+        offline_data['state_idxs'],
+        offline_data['action_idxs'],
+        sa_processor,
+        model_sl_buffer,
+        args.update_hidden_states,
         tau=args.tau, 
         gamma=args.gamma, 
         alpha=alpha, 
         adv_weight=args.adv_weight, 
         adv_rollout_length=args.rollout_length, 
         adv_rollout_batch_size=args.adv_batch_size,
+        sl_batch_size=args.sl_batch_size,
         include_ent_in_adv=args.include_ent_in_adv,
-        scaler=policy_scaler,
+        # scaler=policy_scaler, #TODO
         device=args.device
     ).to(args.device)
 
@@ -209,7 +232,7 @@ def train(args=get_args()):
         "tb": "tensorboard"
     }
     logger = Logger(log_dirs, output_config)
-    logger.log_hyperparameters(vars(args))
+    # logger.log_hyperparameters(vars(args))
 
     # create policy trainer
     policy_trainer = MBPolicyTrainer(
@@ -233,16 +256,17 @@ def train(args=get_args()):
         policy.to(args.device)
     else:
         policy.pretrain(real_buffer.sample_all(), args.bc_epoch, args.bc_batch_size, args.bc_lr, logger)
-    if args.load_dynamics_path:
-        dynamics.load(args.load_dynamics_path)
-    else:
-        dynamics.train(
-            real_buffer.sample_all(),
-            logger,
-            holdout_ratio=0.1,
-            logvar_loss_coef=0.001,
-            max_epochs_since_update=10
-        )
+
+    # if args.load_dynamics_path:
+    #     dynamics.load(args.load_dynamics_path)
+    # else:
+    #     dynamics.train(
+    #         real_buffer.sample_all(),
+    #         logger,
+    #         holdout_ratio=0.1,
+    #         logvar_loss_coef=0.001, # TODO
+    #         max_epochs_since_update=10
+    #     )
 
     policy_trainer.train()
 

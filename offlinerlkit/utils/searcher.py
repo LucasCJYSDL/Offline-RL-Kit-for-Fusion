@@ -26,7 +26,7 @@ def visit_count_temperature(trained_steps, threshold_training_steps_for_final_lr
         return 0.25
 
 class Searcher(object):
-    def __init__(self, params, dynamics, elite_list):
+    def __init__(self, params, dynamics, state_idxs, action_idxs, sa_processor):
         config = dict(
         # (float) The alpha value used in the Dirichlet distribution for exploration at the root node of the search tree.
         root_dirichlet_alpha=params.search_root_alpha,
@@ -44,13 +44,16 @@ class Searcher(object):
         num_states=params.search_n_states, # 5
         # number of search iterations
         num_search=params.search_n_search,
-        gamma=params.gamma
-        )
+        gamma=params.gamma)
+
         self._cfg = EasyDict(config)
         self._dynamics = dynamics
         self._use_ba = params.use_ba
-        self._elite_only = params.elite_only
-        self._elite_list = elite_list
+        self._search_with_hidden_state = params.search_with_hidden_state
+
+        self._state_idxs = state_idxs
+        self._action_idxs = action_idxs
+        self._sa_processor = sa_processor
 
         print("Key Hyperparameters for MCTS: ", self._cfg.root_dirichlet_alpha, self._cfg.alpha, self._cfg.lambd, self._cfg.num_actions, self._cfg.num_states)
 
@@ -60,12 +63,18 @@ class Searcher(object):
     def set_roots(self, root_num):
         return search_tree.Roots(root_num, self._cfg.num_actions, self._cfg.num_states)
     
-    def prepare(self, roots, init_priors, init_states, policy_logits):
-        # noises = [np.random.dirichlet([self._cfg.root_dirichlet_alpha] * int(self._cfg.num_actions)).astype(np.float32).tolist() 
-        #           for _ in range(roots.num)]
-        roots.prepare(init_priors.T.tolist(), init_states.tolist(), policy_logits)
+    def prepare(self, roots, init_priors, init_states, policy_logits, init_full_states, init_pre_actions, init_time_steps, hidden_states):
+        if self._search_with_hidden_state:
+            init_full_states = np.concatenate([init_full_states, hidden_states.reshape(init_full_states.shape[0], -1)], axis=-1) #?
+
+        init_time_steps = np.squeeze(init_time_steps, axis=-1).astype(int)
+        roots.prepare(init_priors.T.tolist(), init_states.tolist(), policy_logits, 
+                      init_full_states.tolist(), init_pre_actions.tolist(), init_time_steps.tolist())
+        self.init_time_steps = init_time_steps
     
-    def search(self, roots, get_search_quantity, hide_tdqm=False):
+    def search(self, roots, full_action_list, terminal_list, hidden_states, get_search_quantity, hide_tdqm=False):
+        
+        hidden_state_dim = np.prod(hidden_states.shape[1:])
         with torch.no_grad():
             batch_size = roots.num
 
@@ -82,29 +91,49 @@ class Searcher(object):
                 MCTS stage 1: traverse
                     Each simulation starts from the initial state s0, and finishes when the simulation reaches a leaf node s_l.
                 """
-                ori_priors, ori_states, ori_actions, dones = search_tree.batch_traverse(roots, alpha, beta, gamma, lambd, min_max_stats_lst, results)
-                # print(any(dones))
+                ori_priors, ori_states, ori_actions, ori_full_states, ori_pre_actions, ori_time_steps, dones = \
+                    search_tree.batch_traverse(roots, alpha, beta, gamma, lambd, min_max_stats_lst, results)
+                
+                idx_list = []
                 if all(dones):
-                    priors, states, actions = [], [], []
-                elif any(dones):
-                    priors, states, actions = [], [], []
+                    remaining_num = 0
+                else:
                     for i in range(batch_size):
                         if not dones[i]:
-                            priors.append(ori_priors[i])
-                            states.append(ori_states[i])
-                            actions.append(ori_actions[i])
-                else:
-                    priors = ori_priors
-                    states = ori_states
-                    actions = ori_actions
+                            idx_list.append(i)
+                    idx_list = np.array(idx_list)
+                    # (5, 5000) (5000, 22) (5000, 6) (5000, 27) (5000, 13) (5000,)
+                    cur_priors = np.asarray(ori_priors)[idx_list].T
+                    cur_states = np.asarray(ori_states)[idx_list]
+                    cur_actions = np.asarray(ori_actions)[idx_list]
+                    cur_full_states = np.asarray(ori_full_states)[idx_list]
+                    cur_pre_actions = np.asarray(ori_pre_actions)[idx_list]
+                    cur_time_steps = np.asarray(ori_time_steps)[idx_list]
+                    cur_full_action_list = full_action_list[idx_list]
+                    cur_terminal_list = terminal_list[idx_list]
 
-                if len(states) > 0:
-                    # (20, 150) (150, 11) (150, 3)
-                    cur_priors = np.asarray(priors).T
-                    cur_states = np.asarray(states)
-                    cur_actions = np.asarray(actions)
+                    remaining_num = len(cur_states)
+
+                if remaining_num > 0:
+                    if self._search_with_hidden_state:
+                        cur_hidden_states = np.moveaxis(cur_full_states[:, -hidden_state_dim:].reshape((remaining_num, ) + hidden_states.shape[1:]), source=0, destination=2).astype(np.float32) #?
+                        cur_full_states = cur_full_states[:, :(cur_full_states.shape[1]-hidden_state_dim)] #?
+                    else:
+                        cur_hidden_states = None # it would be very slow to search with hidden states
+                    self._dynamics.reset(cur_hidden_states) #?
+
+                    # get the full action, danger
+                    indices = (cur_time_steps-self.init_time_steps[idx_list])[:, np.newaxis, np.newaxis]
+                    cur_full_actions = np.squeeze(np.take_along_axis(cur_full_action_list, indices, axis=1), axis=1)
+                    step_actions = self._sa_processor.get_step_action(cur_actions)
+                    cur_full_actions[:, self._action_idxs] = step_actions
+                    cur_time_terminals = np.squeeze(np.take_along_axis(cur_terminal_list, indices, axis=1), axis=1)
+
                     # state transition
-                    next_state, reward, done, info = self._dynamics.step(cur_priors, cur_states, cur_actions, self._elite_only, self._elite_list)
+                    next_state, reward, done, info = self._dynamics.step(cur_priors, cur_full_states, cur_pre_actions, cur_full_actions, \
+                                                                         cur_time_steps[:, np.newaxis], cur_time_terminals, self._state_idxs)
+                    next_state = self._sa_processor.get_rl_state(next_state, info["next_time_steps"])
+                
                     if self._use_ba:
                         cur_probs = info['likelihood']
                         # belief update
@@ -113,7 +142,7 @@ class Searcher(object):
                     else:
                         next_priors = cur_priors
 
-                    logits, next_values, reward_augments, reward_penalty = get_search_quantity(cur_states, cur_actions, cur_priors.T, next_state) 
+                    logits, next_values, reward_augments, reward_penalty = get_search_quantity(cur_full_states, cur_pre_actions, cur_full_actions, cur_time_steps[:, np.newaxis], cur_hidden_states, next_state) 
                     # print(next_values.shape, reward_augments.shape, reward.shape, logits[0].shape, logits[1].shape, reward_penalty.shape)
                     # (5000, 1) (5000, 1) (5000, 1) (5000, 6) (5000, 6) (5000, 1)
                     reward = reward + reward_augments + reward_penalty
@@ -122,11 +151,19 @@ class Searcher(object):
                     next_mus = logits[0]
                     next_stds = logits[1]
 
-                    search_tree.batch_backpropagate(next_priors.T.tolist(), next_state.tolist(), self._cfg.gamma, reward.tolist(), next_values.tolist(), done.tolist(),
+                    next_full_states = info["next_full_observations"]
+                    if self._search_with_hidden_state:
+                        temp_hidden_states = self._dynamics.get_memory() #?
+                        next_full_states = np.concatenate([next_full_states, temp_hidden_states.reshape(next_full_states.shape[0], -1)], axis=-1) #?
+                    next_pre_actions = cur_full_actions
+                    next_time_steps = info["next_time_steps"].reshape(-1).astype(int)
+
+                    search_tree.batch_backpropagate(next_priors.T.tolist(), next_state.tolist(), next_full_states.tolist(), next_pre_actions.tolist(), \
+                                                    next_time_steps.tolist(), self._cfg.gamma, reward.tolist(), next_values.tolist(), done.tolist(), \
                                                     next_mus.tolist(), next_stds.tolist(), min_max_stats_lst, results)
                     
                 else:
-                    search_tree.batch_backpropagate([[]], [[]], self._cfg.gamma, [], [], [], [[]], [[]], min_max_stats_lst, results)
+                    search_tree.batch_backpropagate([[]], [[]], [[]], [[]], [], self._cfg.gamma, [], [], [], [[]], [[]], min_max_stats_lst, results)
                 
     def sample(self, roots, deterministic=False):
         roots_visit_count_distributions = roots.get_distributions()

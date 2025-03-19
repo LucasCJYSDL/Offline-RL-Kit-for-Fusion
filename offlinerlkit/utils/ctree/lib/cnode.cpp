@@ -39,7 +39,8 @@ CNode::CNode(int num_of_sampled_actions, int num_of_sampled_states)
     this->state_num = 0;
 }
 
-void CNode::expand(const std::vector<float> &prior, const std::vector<float> &state, const std::vector<float> &pi_mus, const std::vector<float> &pi_stds, float reward, bool is_done)
+void CNode::expand(const std::vector<float> &prior, const std::vector<float> &state, const std::vector<float> &pi_mus, const std::vector<float> &pi_stds, 
+                   const std::vector<float> &full_state, const std::vector<float> &pre_action, int time_step, float reward, bool is_done)
 {
     /*
     Overview:
@@ -51,6 +52,11 @@ void CNode::expand(const std::vector<float> &prior, const std::vector<float> &st
 
     this->prior_list.push_back(prior);
     this->state_list.push_back(state);
+    
+    this->full_state_list.push_back(full_state);
+    this->pre_action_list.push_back(pre_action);
+    this->time_step_list.push_back(time_step);
+
     this->state_num += 1;
     this->state_visit_counts.push_back(0);
     this->action_nums.push_back(0);
@@ -213,7 +219,8 @@ void CRoots::clear()
     this->roots.clear();
 }
 
-void CRoots::prepare(const std::vector<std::vector<float> > &priors, const std::vector<std::vector<float> > &states, const std::vector<std::vector<float> > &pi_mus, const std::vector<std::vector<float> > &pi_stds)
+void CRoots::prepare(const std::vector<std::vector<float> > &priors, const std::vector<std::vector<float> > &states, const std::vector<std::vector<float> > &pi_mus, const std::vector<std::vector<float> > &pi_stds,
+    const std::vector<std::vector<float> > &full_states, const std::vector<std::vector<float> > &pre_actions, const std::vector<int> &time_steps)
 {
     /*
     Overview:
@@ -225,7 +232,7 @@ void CRoots::prepare(const std::vector<std::vector<float> > &priors, const std::
     // sampled related core code
     for (int i = 0; i < this->root_num; ++i)
     {   
-        this->roots[i].expand(priors[i], states[i], pi_mus[i], pi_stds[i], 0.0, false); // by default, the root node is not done
+        this->roots[i].expand(priors[i], states[i], pi_mus[i], pi_stds[i], full_states[i], pre_actions[i], time_steps[i], 0.0, false); // by default, the root node is not done
     }
 }
 
@@ -356,7 +363,8 @@ void cbatch_traverse(CRoots *roots, float alpha, float beta, float gamma, float 
     */
     // set seed
     get_time_and_set_rand_seed();
-    std::vector<float> last_prior, last_state, last_action;
+    std::vector<float> last_prior, last_state, last_action, last_full_state, last_pre_action;
+    int last_time_step;
 
     for (int i = 0; i < results.num; ++i)
     {
@@ -382,6 +390,11 @@ void cbatch_traverse(CRoots *roots, float alpha, float beta, float gamma, float 
             // std::cout << node->state_idx << " " << node->action_idx << " " << visit_sofar << " " << action_sofar << std::endl;
             last_prior = node->prior_list[node->state_idx];
             last_state = node->state_list[node->state_idx];
+
+            last_full_state = node->full_state_list[node->state_idx];
+            last_pre_action = node->pre_action_list[node->state_idx];
+            last_time_step = node->time_step_list[node->state_idx];
+
             last_action = node->legal_actions_list[node->state_idx][node->action_idx];
             int action_visit_sofar = std::floor(std::pow(node->state_action_visit_counts[node->state_idx][node->action_idx], beta));
 
@@ -405,6 +418,11 @@ void cbatch_traverse(CRoots *roots, float alpha, float beta, float gamma, float 
         }
         results.last_priors.push_back(last_prior);
         results.last_states.push_back(last_state);
+
+        results.last_full_states.push_back(last_full_state);
+        results.last_pre_actions.push_back(last_pre_action);
+        results.last_time_steps.push_back(last_time_step);
+
         results.last_actions.push_back(last_action);
         results.nodes.push_back(node);
         results.dones.push_back(is_done);
@@ -412,7 +430,10 @@ void cbatch_traverse(CRoots *roots, float alpha, float beta, float gamma, float 
     }
 }
 
-void cbatch_backpropagate(const std::vector<std::vector<float> > &priors, const std::vector<std::vector<float> > &states, float discount_factor, const std::vector<float> &rewards, const std::vector<float> &values, const std::vector<bool> &dones, const std::vector<std::vector<float> > &mus, const std::vector<std::vector<float> > &stds, CMinMaxStatsList *min_max_stats_lst, CSearchResults &results)
+void cbatch_backpropagate(const std::vector<std::vector<float> > &priors, const std::vector<std::vector<float> > &states, const std::vector<std::vector<float> > &full_states,
+                          const std::vector<std::vector<float> > &pre_actions, const std::vector<int> &time_steps, float discount_factor, const std::vector<float> &rewards, 
+                          const std::vector<float> &values, const std::vector<bool> &dones, const std::vector<std::vector<float> > &mus, 
+                          const std::vector<std::vector<float> > &stds, CMinMaxStatsList *min_max_stats_lst, CSearchResults &results)
 {
     /*
         Overview:
@@ -429,7 +450,7 @@ void cbatch_backpropagate(const std::vector<std::vector<float> > &priors, const 
     {
         if (not results.dones[i])
         {
-            results.nodes[i]->expand(priors[j], states[j], mus[j], stds[j], rewards[j], dones[j]);
+            results.nodes[i]->expand(priors[j], states[j], mus[j], stds[j], full_states[j], pre_actions[j], time_steps[j], rewards[j], dones[j]);
             cbackpropagate(results.search_paths[i], min_max_stats_lst->stats_lst[i], rewards[j], values[j], discount_factor);
             j += 1;
         } else {
