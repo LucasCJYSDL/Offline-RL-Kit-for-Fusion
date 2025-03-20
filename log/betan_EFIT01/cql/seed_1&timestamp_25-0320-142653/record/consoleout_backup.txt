@@ -1,0 +1,24 @@
+----------------------------------------------------------------------------------
+| alpha                              | 0.979    |
+| eval/episode_length                | 224      |
+| eval/episode_length_std            | 2.72     |
+| eval/normalized_episode_reward     | -4.82    |
+| eval/normalized_episode_reward_std | 1.41     |
+| loss/actor                         | 10.8     |
+| loss/alpha                         | -0.016   |
+| loss/critic1                       | -25.9    |
+| loss/critic2                       | -24.3    |
+| timestep                           | 1000     |
+----------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
+| alpha                              | 1.02     |
+| eval/episode_length                | 224      |
+| eval/episode_length_std            | 3.11     |
+| eval/normalized_episode_reward     | -4.46    |
+| eval/normalized_episode_reward_std | 1.24     |
+| loss/actor                         | 30.7     |
+| loss/alpha                         | -0.0671  |
+| loss/critic1                       | -35.2    |
+| loss/critic2                       | -34.1    |
+| timestep                           | 2000     |
+----------------------------------------------------------------------------------

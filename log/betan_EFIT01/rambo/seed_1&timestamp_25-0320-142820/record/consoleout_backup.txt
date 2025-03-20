@@ -1,0 +1,28 @@
+Pretraining policy
+num rollout transitions: 246414, reward mean: -0.0087
+num rollout transitions: 246401, reward mean: -0.0084
+num rollout transitions: 246449, reward mean: -0.0084
+num rollout transitions: 246492, reward mean: -0.0083
+----------------------------------------------------------------------------------
+| adv_dynamics_update/adv_advantage  | 1.01e-18 |
+| adv_dynamics_update/adv_log_prob   | 36       |
+| adv_dynamics_update/adv_loss       | -0.00588 |
+| adv_dynamics_update/all_loss       | 0.513    |
+| adv_dynamics_update/sl_loss        | 0.513    |
+| alpha                              | 0.959    |
+| eval/episode_length                | 224      |
+| eval/episode_length_std            | 2.72     |
+| eval/normalized_episode_reward     | -4.95    |
+| eval/normalized_episode_reward_std | 0.841    |
+| loss/actor                         | -7.5     |
+| loss/alpha                         | -0.425   |
+| loss/critic1                       | 13.3     |
+| loss/critic2                       | 13.1     |
+| rollout_info/num_transitions       | 2.46e+05 |
+| rollout_info/reward_mean           | -0.00844 |
+| timestep                           | 1000     |
+----------------------------------------------------------------------------------
+num rollout transitions: 246427, reward mean: -0.0083
+num rollout transitions: 246378, reward mean: -0.0084
+num rollout transitions: 246340, reward mean: -0.0084
+num rollout transitions: 246401, reward mean: -0.0083

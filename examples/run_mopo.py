@@ -87,8 +87,8 @@ def train(args=get_args()):
     # collect the data for rl training
     offline_data['rewards'] = env.get_reward(offline_data['observations'], offline_data['time_step'])
     offline_data['actions'] = sa_processor.normalize_action(offline_data['actions'])
-    offline_data['observations'] = np.concatenate([offline_data['observations'], offline_data['time_step'][:, np.newaxis]/float(sa_processor.time_limit)], axis=1)
-    offline_data['next_observations'] = np.concatenate([offline_data['next_observations'], (offline_data['time_step'][:, np.newaxis]+1)/float(sa_processor.time_limit)], axis=1)
+    offline_data['observations'] = sa_processor.get_rl_state(offline_data['observations'], offline_data['time_step'][:, np.newaxis])
+    offline_data['next_observations'] = sa_processor.get_rl_state(offline_data['next_observations'], offline_data['time_step'][:, np.newaxis] + 1)
 
     print(offline_data['observations'].shape, offline_data['next_observations'].shape, offline_data['time_step'].shape, offline_data['rewards'].shape, offline_data['actions'].shape)
 
