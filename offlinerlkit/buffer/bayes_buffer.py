@@ -89,11 +89,14 @@ class BayesReplayBuffer(ReplayBuffer):
         tmp_terminal = np.zeros_like(self.time_steps[batch_indexes])
 
         i = 0 
+        batch_idx_list = []
         while not np.all(tmp_terminal):
             cur_batch_indexes = batch_indexes + i
             cur_batch_indexes[cur_batch_indexes >= self._size-1] = self._size-1
             f_act.append(self.full_actions[cur_batch_indexes].copy())
             time_step.append(self.time_steps[cur_batch_indexes].copy())
+            batch_idx_list.append(cur_batch_indexes.copy())
+
             if i >= 1:
                 tmp_terminal[time_step[-1] <= time_step[-2]] = 1
                 terminal.append(tmp_terminal.copy())
@@ -112,7 +115,8 @@ class BayesReplayBuffer(ReplayBuffer):
             "full_observations": self.full_observations[batch_indexes].copy(),
             "pre_actions": self.pre_actions[batch_indexes].copy(),
             "hidden_states": np.moveaxis(self.hidden_states[batch_indexes], source=0, destination=2),
-            "rollout_length": rollout_length
+            "rollout_length": rollout_length,
+            "batch_idx_list": batch_idx_list
         }
         
         return ret

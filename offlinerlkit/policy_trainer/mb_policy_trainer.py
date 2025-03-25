@@ -98,11 +98,9 @@ class MBPolicyTrainer:
             eval_info = self._evaluate()
             ep_reward_mean, ep_reward_std = np.mean(eval_info["eval/episode_reward"]), np.std(eval_info["eval/episode_reward"])
             ep_length_mean, ep_length_std = np.mean(eval_info["eval/episode_length"]), np.std(eval_info["eval/episode_length"])
-            norm_ep_rew_mean = self.eval_env.get_normalized_score(ep_reward_mean) * 100
-            norm_ep_rew_std = self.eval_env.get_normalized_score(ep_reward_std) * 100
-            last_10_performance.append(norm_ep_rew_mean)
-            self.logger.logkv("eval/normalized_episode_reward", norm_ep_rew_mean)
-            self.logger.logkv("eval/normalized_episode_reward_std", norm_ep_rew_std)
+            last_10_performance.append(ep_reward_mean)
+            self.logger.logkv("eval/episode_reward", ep_reward_mean)
+            self.logger.logkv("eval/episode_reward_std", ep_reward_std)
             self.logger.logkv("eval/episode_length", ep_length_mean)
             self.logger.logkv("eval/episode_length_std", ep_length_std)
             self.logger.set_timestep(num_timesteps)

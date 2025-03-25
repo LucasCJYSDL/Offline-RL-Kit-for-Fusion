@@ -70,13 +70,14 @@ class MOPOPolicy(SACPolicy):
 
         for t in range(rollout_length):
             observations = full_observations[:, self.state_idxs]
-            observations = self.sa_processor.get_rl_state(observations, time_steps)
+            observations = self.sa_processor.get_rl_state(observations, init_samples["batch_idx_list"][t])
+
             actions = self.select_action(observations)
             step_actions = self.sa_processor.get_step_action(actions)
             full_actions[:, self.action_idxs] = step_actions.copy()
 
-            next_observations, rewards, terminals, info = self.dynamics.step(full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs)
-            next_observations = self.sa_processor.get_rl_state(next_observations, info["next_time_steps"])
+            next_observations, rewards, terminals, info = self.dynamics.step(full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs, init_samples["batch_idx_list"][t])
+            next_observations = self.sa_processor.get_rl_state(next_observations, init_samples["batch_idx_list"][t+1])
 
             rollout_transitions["obss"].append(observations[idx_list])
             rollout_transitions["next_obss"].append(next_observations[idx_list])

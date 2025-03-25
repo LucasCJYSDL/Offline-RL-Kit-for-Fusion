@@ -36,7 +36,7 @@ class RAMBOPolicy(MOPOPolicy):
         gamma: float = 0.99,
         alpha: Union[float, Tuple[float, torch.Tensor, torch.optim.Optimizer]] = 0.2,
         adv_weight: float = 0,
-        adv_train_steps: int = 1000,
+        adv_train_steps: int = 500,
         adv_rollout_batch_size: int = 256,
         adv_rollout_length: int = 5,
         sl_batch_size: int = 16,
@@ -80,7 +80,6 @@ class RAMBOPolicy(MOPOPolicy):
         actions = data["actions"]
         sample_num = observations.shape[0]
         idxs = np.arange(sample_num)
-
         logger.log("Pretraining policy")
         self.actor.train()
         for i_epoch in range(n_epoch):
@@ -134,7 +133,7 @@ class RAMBOPolicy(MOPOPolicy):
                 self.dynamics.reset()
 
             observations = full_observations[:, self.state_idxs]
-            observations = self.sa_processor.get_rl_state(observations, time_steps)
+            observations = self.sa_processor.get_rl_state(observations, init_samples["batch_idx_list"][0])
             tot_loss = 0.
             for t in range(self._adv_rollout_length):
                 actions = super().select_action(observations) #??
@@ -145,18 +144,17 @@ class RAMBOPolicy(MOPOPolicy):
 
                 next_observations, terminals, loss_info, info, t_loss = self.dynamics_step_and_forward(observations, actions, full_observations, full_actions, 
                                                                                                        pre_actions, time_steps, time_terminals, sl_input, 
-                                                                                                       sl_output, sl_mask)
+                                                                                                       sl_output, sl_mask, init_samples["batch_idx_list"][t],
+                                                                                                       init_samples["batch_idx_list"][t+1])
                 tot_loss += t_loss
                 
                 for _key in loss_info:
                     all_loss_info[_key] += loss_info[_key]
 
                 steps += 1
-                if steps % 500 == 0:
-                    print("Halfway......")
 
                 nonterm_mask = (~terminals[idx_list]).flatten()
-                if nonterm_mask.sum() == 0 or steps >= 1000:
+                if nonterm_mask.sum() == 0 or steps >= self._adv_train_steps:
                     break
                 
                 observations = next_observations
@@ -193,7 +191,9 @@ class RAMBOPolicy(MOPOPolicy):
         time_terminals, 
         sl_input, 
         sl_output, 
-        sl_mask
+        sl_mask,
+        batch_idxs,
+        next_batch_idxs
     ):
         net_input = np.concatenate([full_observations, pre_actions, full_actions-pre_actions], axis=-1)
         mean, std = self.dynamics.model.forward(torch.tensor(net_input, device=self.device), is_tensor=True, with_grad=True)
@@ -215,8 +215,8 @@ class RAMBOPolicy(MOPOPolicy):
 
         # get the reward
         next_observations = full_next_observations[:, self.state_idxs]
-        rewards = self.dynamics.reward_fn(next_observations.cpu().numpy(), time_steps.reshape(-1)).reshape(-1, 1)
-        next_observations = self.sa_processor.get_rl_state(next_observations, time_steps.reshape(-1))
+        rewards = self.dynamics.reward_fn(next_observations.cpu().numpy(), batch_idxs).reshape(-1, 1)
+        next_observations = self.sa_processor.get_rl_state(next_observations, next_batch_idxs)
 
         # get the termination signal
         terminals = self.dynamics.terminal_fn(time_steps)

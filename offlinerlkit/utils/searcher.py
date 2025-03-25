@@ -63,9 +63,11 @@ class Searcher(object):
     def set_roots(self, root_num):
         return search_tree.Roots(root_num, self._cfg.num_actions, self._cfg.num_states)
     
-    def prepare(self, roots, init_priors, init_states, policy_logits, init_full_states, init_pre_actions, init_time_steps, hidden_states):
+    def prepare(self, roots, init_priors, init_states, policy_logits, init_full_states, init_pre_actions, init_time_steps, hidden_states, init_idxs):
         if self._search_with_hidden_state:
             init_full_states = np.concatenate([init_full_states, hidden_states.reshape(init_full_states.shape[0], -1)], axis=-1) #?
+        # this step is pretty hacky, but I do not want to change the mcts core
+        init_full_states = np.concatenate([init_full_states, init_idxs[:, np.newaxis]], axis=-1)
 
         init_time_steps = np.squeeze(init_time_steps, axis=-1).astype(int)
         roots.prepare(init_priors.T.tolist(), init_states.tolist(), policy_logits, 
@@ -115,6 +117,8 @@ class Searcher(object):
                     remaining_num = len(cur_states)
 
                 if remaining_num > 0:
+                    cur_batch_idx = cur_full_states[:, -1].astype(int)
+                    cur_full_states = cur_full_states[:, :-1]
                     if self._search_with_hidden_state:
                         cur_hidden_states = np.moveaxis(cur_full_states[:, -hidden_state_dim:].reshape((remaining_num, ) + hidden_states.shape[1:]), source=0, destination=2).astype(np.float32) #?
                         cur_full_states = cur_full_states[:, :(cur_full_states.shape[1]-hidden_state_dim)] #?
@@ -131,8 +135,8 @@ class Searcher(object):
 
                     # state transition
                     next_state, reward, done, info = self._dynamics.step(cur_priors, cur_full_states, cur_pre_actions, cur_full_actions, \
-                                                                         cur_time_steps[:, np.newaxis], cur_time_terminals, self._state_idxs)
-                    next_state = self._sa_processor.get_rl_state(next_state, info["next_time_steps"])
+                                                                         cur_time_steps[:, np.newaxis], cur_time_terminals, self._state_idxs, cur_batch_idx)
+                    next_state = self._sa_processor.get_rl_state(next_state, cur_batch_idx + 1)
                 
                     if self._use_ba:
                         cur_probs = info['likelihood']
@@ -142,7 +146,7 @@ class Searcher(object):
                     else:
                         next_priors = cur_priors
 
-                    logits, next_values, reward_augments, reward_penalty = get_search_quantity(cur_full_states, cur_pre_actions, cur_full_actions, cur_time_steps[:, np.newaxis], cur_hidden_states, next_state) 
+                    logits, next_values, reward_augments, reward_penalty = get_search_quantity(cur_full_states, cur_pre_actions, cur_full_actions, cur_hidden_states, next_state, done) 
                     # print(next_values.shape, reward_augments.shape, reward.shape, logits[0].shape, logits[1].shape, reward_penalty.shape)
                     # (5000, 1) (5000, 1) (5000, 1) (5000, 6) (5000, 6) (5000, 1)
                     reward = reward + reward_augments + reward_penalty
@@ -155,6 +159,8 @@ class Searcher(object):
                     if self._search_with_hidden_state:
                         temp_hidden_states = self._dynamics.get_memory() #?
                         next_full_states = np.concatenate([next_full_states, temp_hidden_states.reshape(next_full_states.shape[0], -1)], axis=-1) #?
+                    next_full_states = np.concatenate([next_full_states, (cur_batch_idx+1)[:, np.newaxis]], axis=-1)
+
                     next_pre_actions = cur_full_actions
                     next_time_steps = info["next_time_steps"].reshape(-1).astype(int)
 

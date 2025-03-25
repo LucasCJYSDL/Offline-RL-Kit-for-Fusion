@@ -16,10 +16,7 @@ from offlinerlkit.buffer import ReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MBPolicyTrainer
 from offlinerlkit.policy import MOPOPolicy
-
-from envs.fusion import SA_processor, NFEnv, load_offline_data
-current_directory = os.getcwd() #?
-
+from preparation.get_rl_data_envs import get_rl_data_envs
 
 """
 suggested hypers
@@ -34,7 +31,6 @@ halfcheetah-medium-expert-v2: rollout-length=5, penalty-coef=2.5
 hopper-medium-expert-v2: rollout-length=5, penalty-coef=5.0
 walker2d-medium-expert-v2: rollout-length=1, penalty-coef=2.5
 """
-
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -58,44 +54,26 @@ def get_args():
 
     parser.add_argument("--epoch", type=int, default=3000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
-    parser.add_argument("--eval_episodes", type=int, default=10)
+    parser.add_argument("--eval_episodes", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=256)
 
+    #!!! what you need to specify
+    parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="betan_EFIT01") #?
     parser.add_argument("--seed", type=int, default=1)
-    # parser.add_argument("--offline_data_dir", type=str, default=current_directory + '/data/nf_data.h5') # must run from the examples folder
-    parser.add_argument("--raw_data_dir", type=str, default='/zfsauton/project/fusion/data/organized/noshape_gas_flat_top/') # must run from the examples folder
-    parser.add_argument('--rnn_model_dir', type=str, default='/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar') #?
-    parser.add_argument("--use_partial", type=bool, default=True)
     parser.add_argument("--cuda_id", type=int, default=0)
 
     return parser.parse_args()
 
 
 def train(args=get_args()):
-    
-    ############################# Modified #################################
+    # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
-    args.offline_data_dir = args.raw_data_dir + 'processed_data_rl.h5'
-    offline_data = load_offline_data(args.offline_data_dir, args.raw_data_dir, args.task, args.use_partial)
-    sa_processor = SA_processor(bounds=(offline_data['action_lower_bounds'], offline_data['action_upper_bounds']), \
-                                time_limit=offline_data['tracking_ref'].shape[0], device=args.device)
-    env = NFEnv(args.rnn_model_dir, args.device, offline_data['tracking_ref'], offline_data['tracking_states'], \
-                offline_data['tracking_pre_actions'], offline_data['tracking_actions'], offline_data['index_list'], \
-                sa_processor, offline_data["state_idxs"], offline_data["action_idxs"])
+    offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device)
     
-    # collect the data for rl training
-    offline_data['rewards'] = env.get_reward(offline_data['observations'], offline_data['time_step'])
-    offline_data['actions'] = sa_processor.normalize_action(offline_data['actions'])
-    offline_data['observations'] = sa_processor.get_rl_state(offline_data['observations'], offline_data['time_step'][:, np.newaxis])
-    offline_data['next_observations'] = sa_processor.get_rl_state(offline_data['next_observations'], offline_data['time_step'][:, np.newaxis] + 1)
-
-    print(offline_data['observations'].shape, offline_data['next_observations'].shape, offline_data['time_step'].shape, offline_data['rewards'].shape, offline_data['actions'].shape)
-
     args.obs_shape = (offline_data['observations'].shape[1], )
     args.action_dim = offline_data['actions'].shape[1]
     args.max_action = 1.0
-    ############################# Modified End #################################
 
     # seed
     random.seed(args.seed)
@@ -139,17 +117,17 @@ def train(args=get_args()):
 
     # create dynamics
     dynamics_model = EnsembleDynamicsModel(
-        model_path=args.rnn_model_dir,
+        model_path=training_dyn_model_dir,
         device=args.device
     )
 
-    termination_fn = env.is_done
-    reward_fn = env.get_reward
+    termination_fn = env.is_done # danger
+    reward_fn = sa_processor.get_reward # danger
     dynamics = EnsembleDynamics(
         dynamics_model,
         termination_fn,
         reward_fn,
-        penalty_coef=args.penalty_coef,
+        penalty_coef=args.penalty_coef
     )
 
     # create policy

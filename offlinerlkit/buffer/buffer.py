@@ -2,7 +2,6 @@ import numpy as np
 import torch
 
 from typing import Optional, Union, Tuple, Dict
-from numpy.lib.stride_tricks import as_strided
 
 class ReplayBuffer:
     def __init__(
@@ -124,7 +123,7 @@ class ReplayBuffer:
             self.full_actions = np.array(dataset["full_actions"], dtype=self.action_dtype)
             self.time_steps = np.array(dataset["time_step"]).reshape(-1, 1)
             if hidden:
-                self.hidden_states = np.array(dataset["hidden_states"])
+                self.hidden_states = np.array(dataset["hidden_states"], dtype=np.float32)
                 self.full_next_observations = np.array(dataset["full_next_observations"], dtype=self.obs_dtype)
             
      
@@ -169,15 +168,17 @@ class ReplayBuffer:
             "rewards": self.rewards[:self._size].copy()
         }
     
-    
     def sample_rollouts(self, batch_size, rollout_length) -> Dict[str, np.ndarray]:
         batch_indexes = np.random.randint(0, self._size, size=batch_size)
         f_obs, f_act, pre_act, time_step, terminal = [], [], [], [], []
         tmp_terminal = np.zeros_like(self.time_steps[batch_indexes])
+        batch_idx_list = []
 
         for i in range(rollout_length+1):
             cur_batch_indexes = batch_indexes + i
             cur_batch_indexes[cur_batch_indexes >= self._size-1] = self._size-1
+            batch_idx_list.append(cur_batch_indexes.copy())
+
             f_obs.append(self.full_observations[cur_batch_indexes].copy())
             f_act.append(self.full_actions[cur_batch_indexes].copy())
             pre_act.append(self.pre_actions[cur_batch_indexes].copy())
@@ -192,40 +193,11 @@ class ReplayBuffer:
             "pre_actions": np.moveaxis(np.array(pre_act)[:-1], source=0, destination=1),
             "time_steps": np.moveaxis(np.array(time_step)[:-1], source=0, destination=1),
             "terminals": np.moveaxis(np.array(terminal, dtype=bool), source=0, destination=1),
-            "hidden_states": np.moveaxis(self.hidden_states[batch_indexes], source=0, destination=2)
+            "hidden_states": np.moveaxis(self.hidden_states[batch_indexes], source=0, destination=2),
+            "batch_idx_list": batch_idx_list
         }   
         
         return ret
-    
-    # def update_hidden_states(self, model):
-    #     tot_len = self.hidden_states.shape[0]
-
-    #     if self.net_input is None:
-    #         temp_net_input = np.concatenate([self.full_observations, self.pre_actions, self.full_actions-self.pre_actions], axis=-1)
-    #         self.net_input = []
-
-    #         net_input = []
-    #         for t in range(tot_len):
-    #             net_input.append(temp_net_input[t])
-    #             if self.terminals[t][0] > 0 or t == (tot_len - 1):
-    #                 self.net_input.append(np.array(net_input))
-    #                 net_input = []
-
-    #     for memb in model.all_models: # TODO: optional
-    #         memb.reset()
-
-    #     s_id = 0
-    #     for i in range(len(self.net_input)):
-    #         e_id = s_id + len(self.net_input[i])
-    #         net_input_tensor = torch.FloatTensor(self.net_input[i]).unsqueeze(0).to(model.device)
-    #         memb_out_list = []
-    #         with torch.no_grad():
-    #             for memb in model.all_models:
-    #                 net_input_n = memb.normalizer.normalize(net_input_tensor, 0)
-    #                 memb_out = memb.get_mem_out(net_input_n) # we have updated the dynamics toolbox
-    #                 memb_out_list.append(memb_out)
-    #         self.hidden_states[s_id:e_id] = torch.stack(memb_out_list).permute(2, 0, 1, 3).cpu().numpy()
-    #         s_id = e_id
 
     def update_hidden_states(self, model, net_input, len_list):
         s_id = 0

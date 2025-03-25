@@ -10,12 +10,11 @@ class EnsembleDynamicsModel(nn.Module):
     def __init__(
         self,
         model_path: str,
-        output_dim: int = -1,
         device: str = "cpu"
     ) -> None:
         super().__init__()
 
-        # load the well-trained rnn model ensemble
+        # load the well-trained rnn model ensemble for training
         ensemble = load_ensemble_from_parent_dir(parent_dir=model_path) # TODO: an ensemble of dynamics models
         self.all_models = nn.ModuleList(ensemble.members)
         self.num_ensemble = len(self.all_models)
@@ -27,26 +26,18 @@ class EnsembleDynamicsModel(nn.Module):
 
         self.device = device
         self.member_list = np.array(range(0, self.num_ensemble))
-
-        # if output_dim > 0:
-        #     self.register_parameter(
-        #         "max_logvar",
-        #         nn.Parameter(torch.ones(output_dim) * 0.5, requires_grad=True)
-        #     )
-        #     self.register_parameter(
-        #         "min_logvar",
-        #         nn.Parameter(torch.ones(output_dim) * -10, requires_grad=True)
-        #     )
-        #     self.to(self.device)
     
     def reset(self, hidden_states):
         for memb in self.all_models:
             memb.reset()
+
         if hidden_states is not None:
+            if type(hidden_states) == np.ndarray:
+                hidden_states = torch.tensor(hidden_states, device=self.device, dtype=torch.float32)
             # danger
             i = 0
             for memb in self.all_models:
-                memb._hidden_state = torch.tensor(hidden_states[i], device=self.device)
+                memb._hidden_state = hidden_states[i].clone()
                 i += 1
         
     def forward(self, net_input, is_tensor=False, with_grad=False):
@@ -73,7 +64,6 @@ class EnsembleDynamicsModel(nn.Module):
             return np.array(means), np.array(stds)
         return torch.stack(means), torch.stack(stds)
     
-    
     def get_sl_loss(self, x, y, mask):
         sl_loss = 0.
 
@@ -90,7 +80,6 @@ class EnsembleDynamicsModel(nn.Module):
 
         return sl_loss / float(self.num_ensemble)
 
-    
     def random_member_idxs(self, batch_size: int) -> np.ndarray:
         idxs = np.random.choice(self.member_list, size=batch_size)
         return idxs

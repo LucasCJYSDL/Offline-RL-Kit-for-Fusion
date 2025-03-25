@@ -35,14 +35,15 @@ class EnsembleDynamics:
         cur_action: np.ndarray,
         time_steps, 
         time_terminals, 
-        state_idxs
+        state_idxs,
+        batch_idxs
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict]:
         info = {}
-        net_input = np.concatenate([cur_state, pre_action, cur_action-pre_action], axis=-1)
+        net_input = np.concatenate([cur_state, pre_action, cur_action-pre_action], axis=-1).astype(np.float32)
         mean, std = self.model.forward(net_input)
 
         mean += cur_state
-        ensemble_samples = (mean + np.random.normal(size=mean.shape) * std).astype(np.float32)
+        ensemble_samples = (mean + np.random.normal(size=mean.shape) * std)
 
         # choose one model from ensemble
         num_models, batch_size, _ = ensemble_samples.shape
@@ -54,7 +55,7 @@ class EnsembleDynamics:
 
         # get the reward
         next_obs = samples[:, state_idxs]
-        reward = self.reward_fn(next_obs, time_steps.reshape(-1)).reshape(-1, 1)
+        reward = self.reward_fn(next_obs, batch_idxs).reshape(-1, 1) # based on next state and current timesteps
         info["raw_reward"] = reward
 
         # get the termination signal
@@ -98,7 +99,7 @@ class EnsembleDynamics:
         else:
             self.reset(hidden_states=hidden_states)
 
-        net_input = torch.cat([full_obss, pre_actions, full_actions-pre_actions], dim=-1)
+        net_input = torch.cat([full_obss, pre_actions, full_actions-pre_actions], dim=-1).to(torch.float32)
         mean, std = self.model.forward(net_input, is_tensor=True)
 
         next_obss = torch.stack([mean + torch.randn_like(std) * std for i in range(num_samples)], 0) # torch.Size([10, 5, 256, 27])

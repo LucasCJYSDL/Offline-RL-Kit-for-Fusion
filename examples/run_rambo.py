@@ -15,9 +15,8 @@ from offlinerlkit.buffer import ReplayBuffer, ModelSLReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MBPolicyTrainer
 from offlinerlkit.policy import RAMBOPolicy
+from preparation.get_rl_data_envs import get_rl_data_envs
 
-from envs.fusion import SA_processor, NFEnv, load_offline_data
-current_directory = os.getcwd() #?
 
 """
 suggested hypers
@@ -53,6 +52,7 @@ def get_args():
     parser.add_argument("--rollout-freq", type=int, default=250)
     parser.add_argument("--dynamics-update-freq", type=int, default=1000) #??
     parser.add_argument("--adv-batch-size", type=int, default=256)
+    parser.add_argument("--adv-train-steps", type=int, default=500)
     parser.add_argument("--sl-batch-size", type=int, default=8)
     parser.add_argument("--rollout-batch-size", type=int, default=50000)
     parser.add_argument("--rollout-length", type=int, default=5)
@@ -62,7 +62,7 @@ def get_args():
 
     parser.add_argument("--epoch", type=int, default=2000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
-    parser.add_argument("--eval_episodes", type=int, default=10)
+    parser.add_argument("--eval_episodes", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=256)
 
     parser.add_argument("--include-ent-in-adv", type=bool, default=False)
@@ -71,35 +71,20 @@ def get_args():
     parser.add_argument("--bc-epoch", type=int, default=50)
     parser.add_argument("--bc-batch-size", type=int, default=256)
 
+    #!!! what you need to specify
+    parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="betan_EFIT01") #?
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--raw_data_dir", type=str, default='/zfsauton/project/fusion/data/organized/noshape_gas_flat_top/') # must run from the examples folder
-    parser.add_argument('--rnn_model_dir', type=str, default='/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar') #?
-    parser.add_argument("--use_partial", type=bool, default=True)
-    parser.add_argument("--update_hidden_states", type=bool, default=True)
-    parser.add_argument("--cuda_id", type=int, default=0)
+    parser.add_argument("--update_hidden_states", type=bool, default=False) # whether to update the hidden states in the offline dataset, since the dynamics model is being updated with the rl policy
+    parser.add_argument("--cuda_id", type=int, default=3)
 
     return parser.parse_args()
 
 
 def train(args=get_args()):
-    # create env and dataset
+    # offline rl data and env
     args.device = torch.device("cuda:{}".format(args.cuda_id) if torch.cuda.is_available() else "cpu")
-    args.offline_data_dir = args.raw_data_dir + 'processed_data_rl.h5'
-    offline_data = load_offline_data(args.offline_data_dir, args.raw_data_dir, args.task, args.use_partial)
-    sa_processor = SA_processor(bounds=(offline_data['action_lower_bounds'], offline_data['action_upper_bounds']), \
-                                time_limit=offline_data['tracking_ref'].shape[0], device=args.device)
-    env = NFEnv(args.rnn_model_dir, args.device, offline_data['tracking_ref'], offline_data['tracking_states'], \
-                offline_data['tracking_pre_actions'], offline_data['tracking_actions'], offline_data['index_list'], \
-                sa_processor, offline_data["state_idxs"], offline_data["action_idxs"])
-    
-    # collect the data for rl training
-    offline_data['rewards'] = env.get_reward(offline_data['observations'], offline_data['time_step'])
-    offline_data['actions'] = sa_processor.normalize_action(offline_data['actions'])
-    offline_data['observations'] = sa_processor.get_rl_state(offline_data['observations'], offline_data['time_step'][:, np.newaxis])
-    offline_data['next_observations'] = sa_processor.get_rl_state(offline_data['next_observations'], offline_data['time_step'][:, np.newaxis] + 1)
-
-    print(offline_data['observations'].shape, offline_data['next_observations'].shape, offline_data['time_step'].shape, offline_data['rewards'].shape, offline_data['actions'].shape)
+    offline_data, sa_processor, env, training_dyn_model_dir = get_rl_data_envs(args.env, args.task, args.device)
 
     args.obs_shape = (offline_data['observations'].shape[1], )
     args.action_dim = offline_data['actions'].shape[1]
@@ -171,14 +156,13 @@ def train(args=get_args()):
     
     # create dynamics
     dynamics_model = EnsembleDynamicsModel(
-        model_path=args.rnn_model_dir,
-        output_dim=offline_data["full_observations"].shape[-1],
+        model_path=training_dyn_model_dir,
         device=args.device
     )
     # dynamics_optim = torch.optim.Adam(
     #     dynamics_model.parameters(),
     #     lr=args.dynamics_lr
-    # )
+    # ) 
     dynamics_adv_optim = torch.optim.Adam(
         dynamics_model.parameters(), 
         lr=args.dynamics_adv_lr
@@ -187,7 +171,7 @@ def train(args=get_args()):
     # dynamics_scaler = StandardScaler()
     # termination_fn = obs_unnormalization(get_termination_fn(task=args.task), obs_mean, obs_std)
     termination_fn = env.is_done
-    reward_fn = env.get_reward
+    reward_fn = sa_processor.get_reward
     dynamics = EnsembleDynamics(
         dynamics_model,
         termination_fn,
@@ -214,6 +198,7 @@ def train(args=get_args()):
         gamma=args.gamma, 
         alpha=alpha, 
         adv_weight=args.adv_weight, 
+        adv_train_steps=args.adv_train_steps,
         adv_rollout_length=args.rollout_length, 
         adv_rollout_batch_size=args.adv_batch_size,
         sl_batch_size=args.sl_batch_size,
@@ -250,7 +235,7 @@ def train(args=get_args()):
         eval_episodes=args.eval_episodes
     )
 
-    # train
+    # train the policy and dynamics model
     if args.load_bc_path:
         policy.load(args.load_bc_path)
         policy.to(args.device)

@@ -119,7 +119,8 @@ class MOBILEPolicy(BasePolicy):
 
         for t in range(rollout_length):
             observations = full_observations[:, self.state_idxs]
-            observations = self.sa_processor.get_rl_state(observations, time_steps)
+            observations = self.sa_processor.get_rl_state(observations, init_samples["batch_idx_list"][t])
+
             actions = self.select_action(observations)
             step_actions = self.sa_processor.get_step_action(actions)
             full_actions[:, self.action_idxs] = step_actions.copy()
@@ -127,8 +128,8 @@ class MOBILEPolicy(BasePolicy):
             # new for mobile
             rollout_transitions["hidden_states"].append(self.dynamics.get_memory()[idx_list])
 
-            next_observations, rewards, terminals, info = self.dynamics.step(full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs)
-            next_observations = self.sa_processor.get_rl_state(next_observations, info["next_time_steps"])
+            next_observations, rewards, terminals, info = self.dynamics.step(full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs, init_samples["batch_idx_list"][t])
+            next_observations = self.sa_processor.get_rl_state(next_observations, init_samples["batch_idx_list"][t+1])
 
             rollout_transitions["obss"].append(observations[idx_list])
             rollout_transitions["next_obss"].append(next_observations[idx_list])
@@ -165,7 +166,7 @@ class MOBILEPolicy(BasePolicy):
             {"num_transitions": num_transitions, "reward_mean": rewards_arr.mean()}
 
     @ torch.no_grad()
-    def compute_lcb(self, full_obss: torch.Tensor, pre_actions: torch.Tensor, full_actions: torch.Tensor, time_steps: torch.Tensor, hidden_states):
+    def compute_lcb(self, full_obss: torch.Tensor, pre_actions: torch.Tensor, full_actions: torch.Tensor, next_obss, hidden_states, terminals):
         # print(full_obss.shape, pre_actions.shape, full_actions.shape, time_steps.shape, hidden_states.shape)
         # compute next q std
         pred_next_obss = self.dynamics.sample_next_obss(full_obss, pre_actions, full_actions, hidden_states, self._num_samples)
@@ -173,15 +174,18 @@ class MOBILEPolicy(BasePolicy):
         pred_next_obss = pred_next_obss.reshape(-1, obs_dim)
 
         pred_next_obss = pred_next_obss[:, self.state_idxs]
-        time_steps = time_steps.unsqueeze(0).unsqueeze(0).repeat(num_samples, num_ensembles, 1, 1).cpu().numpy()
-        next_time_steps = time_steps.reshape(-1) + 1
-        pred_next_obss = self.sa_processor.get_rl_state(pred_next_obss, next_time_steps)
+        # we implement the logic of sa_processor get_rl_state here - hacky
+        subfix = next_obss[:, pred_next_obss.shape[1]:]
+        targets = subfix[:, :subfix.shape[1]//2]
+        targets = targets.unsqueeze(1).unsqueeze(1).repeat(num_samples, num_ensembles, 1, 1).reshape(-1, targets.shape[-1])
+        differences = targets - pred_next_obss[:, self.sa_processor.idx_list]
+        pred_next_obss = torch.cat([pred_next_obss, targets, differences], dim=-1)
 
         pred_next_actions, _ = self.actforward(pred_next_obss)
         
         pred_next_qs = torch.cat([critic_old(pred_next_obss, pred_next_actions) for critic_old in self.critics_old], 1)
         pred_next_qs = torch.min(pred_next_qs, 1)[0].reshape(num_samples, num_ensembles, batch_size, 1)
-        penalty = pred_next_qs.mean(0).std(0)
+        penalty = pred_next_qs.mean(0).std(0) * (1 - terminals) # TODO: do not use termination signals here
 
         return penalty
 
@@ -195,7 +199,8 @@ class MOBILEPolicy(BasePolicy):
         # update critic
         qs = torch.stack([critic(obss, actions) for critic in self.critics], 0)
         with torch.no_grad():
-            penalty = self.compute_lcb(mix_batch["full_observations"], mix_batch["pre_actions"], mix_batch["full_actions"], mix_batch["time_steps"], mix_batch["hidden_states"])
+            penalty = self.compute_lcb(mix_batch["full_observations"], mix_batch["pre_actions"], mix_batch["full_actions"], \
+                                       mix_batch["next_observations"], mix_batch["hidden_states"], mix_batch["terminals"])
             penalty[:len(real_batch["rewards"])] = 0.0
 
             if self._max_q_backup:

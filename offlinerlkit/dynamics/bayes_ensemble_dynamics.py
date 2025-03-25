@@ -36,7 +36,8 @@ class BayesEnsembleDynamics(EnsembleDynamics):
         cur_action: np.ndarray,
         time_steps, 
         time_terminals, 
-        state_idxs
+        state_idxs,
+        batch_idxs
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict]:
         "imagine single forward step"
         info = {}
@@ -47,7 +48,6 @@ class BayesEnsembleDynamics(EnsembleDynamics):
         prior = torch.FloatTensor(prior)
         ensemble_size = prior.shape[0]
         prior_ls = prior.unsqueeze(-1).repeat(1, 1, mus.shape[-1])
-
         
         if self._sample_step:
             try:
@@ -77,7 +77,7 @@ class BayesEnsembleDynamics(EnsembleDynamics):
 
         # get the reward
         next_obs = samples_np[:, state_idxs]
-        reward = self.reward_fn(next_obs, time_steps.reshape(-1)).reshape(-1, 1)
+        reward = self.reward_fn(next_obs, batch_idxs).reshape(-1, 1)
         info["raw_reward"] = reward
 
         # get the termination signal

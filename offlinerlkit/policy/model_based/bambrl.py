@@ -82,7 +82,7 @@ class BAMBRLPolicy(MOBILEPolicy):
             return action.cpu().numpy()
         return action.cpu().numpy(), dists
     
-    def _get_action(self, observations, priors, full_observations, pre_actions, time_steps, full_actions_list, time_terminals_list, hidden_states):
+    def _get_action(self, observations, priors, full_observations, pre_actions, time_steps, full_actions_list, time_terminals_list, hidden_states, idx_list):
 
         actions, logits = self.select_action(observations, return_dists=True)
         # using MCTS
@@ -100,10 +100,11 @@ class BAMBRLPolicy(MOBILEPolicy):
         full_obs_input = full_observations[search_idx]
         pre_act_input = pre_actions[search_idx]
         time_input = time_steps[search_idx]
+        batch_idx_input = idx_list[search_idx]
         hidden_states_input = hidden_states[search_idx]
     
         tree_roots = self._searcher.set_roots(search_size)
-        self._searcher.prepare(tree_roots, prior_input, obs_input, logits, full_obs_input, pre_act_input, time_input, hidden_states_input)
+        self._searcher.prepare(tree_roots, prior_input, obs_input, logits, full_obs_input, pre_act_input, time_input, hidden_states_input, batch_idx_input)
 
         print("Start searching ...")
         self._searcher.search(tree_roots, full_actions_list[search_idx], time_terminals_list[search_idx], 
@@ -119,10 +120,10 @@ class BAMBRLPolicy(MOBILEPolicy):
         return actions
     
     @ torch.no_grad()
-    def get_search_quantity(self, full_state_batch, pre_action_batch, full_action_batch, time_step_batch, hidden_state_batch, nextstate_batch):
+    def get_search_quantity(self, full_state_batch, pre_action_batch, full_action_batch, hidden_state_batch, next_state_batch, terminal_batch):
         # get quantities for expansion 
-        nextstate_batch = torch.FloatTensor(nextstate_batch).to(self._device)
-        q_target, logprobs_batch, logits = self._get_next_q(nextstate_batch, return_dists=True)
+        next_state_batch = torch.FloatTensor(next_state_batch).to(self._device)
+        q_target, logprobs_batch, logits = self._get_next_q(next_state_batch, return_dists=True)
         # -> numpy
         q_target = q_target.cpu().numpy()
         logprobs_batch = logprobs_batch.cpu().numpy()
@@ -133,10 +134,12 @@ class BAMBRLPolicy(MOBILEPolicy):
         full_state_batch = torch.FloatTensor(full_state_batch).to(self._device)
         pre_action_batch = torch.FloatTensor(pre_action_batch).to(self._device)
         full_action_batch = torch.FloatTensor(full_action_batch).to(self._device)
-        time_step_batch = torch.FloatTensor(time_step_batch).to(self._device)
         # hidden_state_batch = torch.FloatTensor(hidden_state_batch).to(self._device)
-        penalty = self.compute_lcb(full_state_batch, pre_action_batch, full_action_batch, time_step_batch, hidden_state_batch)
-        
+        terminal_batch = torch.FloatTensor(terminal_batch).to(self._device)
+
+        penalty = self.compute_lcb(full_state_batch, pre_action_batch, full_action_batch, 
+                                   next_state_batch, hidden_state_batch, terminal_batch)
+
         if isinstance(self._alpha, float):
             augment = - self._alpha * self._gamma * logprobs_batch
         else:
@@ -169,11 +172,12 @@ class BAMBRLPolicy(MOBILEPolicy):
 
         for t in range(rollout_length):
             observations = full_observations[:, self.state_idxs]
-            observations = self.sa_processor.get_rl_state(observations, time_steps)
+            observations = self.sa_processor.get_rl_state(observations, init_samples['batch_idx_list'][t])
             if self._use_search:
                 temp_hidden_states = self.dynamics.get_memory()
                 active_actions = self._get_action(observations[idx_list], priors[:, idx_list], full_observations[idx_list], pre_actions[idx_list], time_steps[idx_list], 
-                                                  init_samples["full_actions"][idx_list], init_samples["terminals"][idx_list], temp_hidden_states[idx_list])
+                                                  init_samples["full_actions"][idx_list], init_samples["terminals"][idx_list], temp_hidden_states[idx_list],
+                                                  init_samples['batch_idx_list'][t][idx_list])
                 actions = np.zeros((observations.shape[0], active_actions.shape[-1]), dtype=np.float32)
                 actions[idx_list] = active_actions
 
@@ -186,8 +190,8 @@ class BAMBRLPolicy(MOBILEPolicy):
             # new for mobile/bambrl
             rollout_transitions["hidden_states"].append(self.dynamics.get_memory()[idx_list])
 
-            next_observations, rewards, terminals, info = self.dynamics.step(priors, full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs)
-            next_observations = self.sa_processor.get_rl_state(next_observations, info["next_time_steps"])
+            next_observations, rewards, terminals, info = self.dynamics.step(priors, full_observations, pre_actions, full_actions, time_steps, time_terminals, self.state_idxs, init_samples['batch_idx_list'][t])
+            next_observations = self.sa_processor.get_rl_state(next_observations, init_samples['batch_idx_list'][t+1])
 
             # update the priors
             if self._use_ba:
@@ -234,24 +238,6 @@ class BAMBRLPolicy(MOBILEPolicy):
         return rollout_transitions, \
             {"num_transitions": num_transitions, "reward_mean": rewards_arr.mean()}
 
-    # @ torch.no_grad()
-    # def compute_lcb(self, obss: torch.Tensor, actions: torch.Tensor, priors: torch.Tensor):
-    #     # compute next q std
-    #     pred_next_obss = self.dynamics.sample_next_obss(obss, actions, self._num_samples, is_bayes=True)
-    #     num_samples, num_ensembles, batch_size, obs_dim = pred_next_obss.shape
-    #     pred_next_obss = pred_next_obss.reshape(-1, obs_dim)
-    #     pred_next_actions, _ = self.actforward(pred_next_obss)
-        
-    #     pred_next_qs = torch.cat([critic_old(pred_next_obss, pred_next_actions) for critic_old in self.critics_old], 1)
-    #     pred_next_qs = torch.min(pred_next_qs, 1)[0].reshape(num_samples, num_ensembles, batch_size, 1)
-    #     values = pred_next_qs.mean(0).squeeze(-1).permute(1, 0) # (batch_size, n_ensemble)
-
-    #     # get the std using the values and priors
-    #     weighted_mean = torch.sum(values * priors, dim=1, keepdim=True).repeat(1, values.shape[1])
-    #     variance = torch.sum(priors * (values - weighted_mean)**2, dim=1, keepdim=True)
-    #     penalty = variance.sqrt()
-
-    #     return penalty
     
     def _get_next_q(self, next_obss, return_dists=False):
         batch_size = next_obss.shape[0]
@@ -304,7 +290,8 @@ class BAMBRLPolicy(MOBILEPolicy):
         qs = torch.stack([critic(obss, actions) for critic in self.critics], 0)
         with torch.no_grad():
             # penalty = self.compute_lcb(obss, actions, priors)
-            penalty = self.compute_lcb(mix_batch["full_observations"], mix_batch["pre_actions"], mix_batch["full_actions"], mix_batch["time_steps"], mix_batch["hidden_states"])
+            penalty = self.compute_lcb(mix_batch["full_observations"], mix_batch["pre_actions"], mix_batch["full_actions"], 
+                                       mix_batch["next_observations"], mix_batch["hidden_states"], mix_batch["terminals"])
             penalty[:len(real_batch["rewards"])] = 0.0 # ipt
 
             next_q = self._get_next_q(next_obss)
