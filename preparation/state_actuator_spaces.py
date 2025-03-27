@@ -2,7 +2,7 @@ import pickle
 
 #!!! what you need to specify
 # which states/actuators are actually used
-obs_in_use = ['betan_EFIT01',
+obs_in_use = ["betan_EFIT01",
                 "temp_component1", 
                 "temp_component2", 
                 "temp_component3", 

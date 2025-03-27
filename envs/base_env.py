@@ -40,7 +40,7 @@ class SA_processor: # used for both training and evaluation
     
     def get_rl_state(self, state, batch_idx, shot_id=None):
         """
-        Get the rl state based on the state from the dynamics model.
+        Design of the state space (used for the rl policy).
         """
         is_np = True if type(state) == np.ndarray else False
 
@@ -79,13 +79,14 @@ class SA_processor: # used for both training and evaluation
     
     def normalize_action(self, action):
         """
-        Normalize the action in the offline dataset for rl training.
+        Normalize actions (based on the actuator bounds) in the offline dataset for rl training.
         """
         act_num = action.shape[0]
         return (action - self.mid.repeat(act_num, 1).cpu().numpy()) / (self.range.repeat(act_num, 1).cpu().numpy()+1e-6)
     
     def get_reward(self, next_state, time_step, shot_id=None): 
         """
+        Design of the reward function.
         The reward function is defined based on the distance between the actual next state and the target next state (i.e., the target specified at the current time step).
         """
         if np.isscalar(time_step): # for evaluation
@@ -125,10 +126,16 @@ class NFBaseEnv: # env for evaluation
             memb.eval()
 
     def seed(self, seed):
+        """
+        Seed the randomness.
+        """
         random.seed(seed)
         torch.manual_seed(seed)
 
     def reset(self):
+        """
+        Reset at the beginning of an episode.
+        """
         self.cur_time = random.randint(0, 9)
         self.cur_state = torch.FloatTensor(self.tracking_states[self.cur_time]).unsqueeze(0).to(self.device)
         self.pre_action = torch.FloatTensor(self.tracking_pre_actions[self.cur_time]).unsqueeze(0).to(self.device)
@@ -141,6 +148,9 @@ class NFBaseEnv: # env for evaluation
         return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id = self.ref_shot_id)
 
     def step(self, cur_action):
+        """
+        Proceed to the next time step in the episode.
+        """
         # prepare the input for the dymamics model
         cur_action = torch.Tensor(cur_action).to(self.device)
         cur_action = self.sa_processor.get_step_action(cur_action)

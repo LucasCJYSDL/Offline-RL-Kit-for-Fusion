@@ -4,11 +4,15 @@
 
 - You would also need [dynamics-toolbox](https://github.com/LucasCJYSDL/dynamics-toolbox). This toolbox is different from Ian's, as we have changed the rpnn class.
 
-- Please start from 'example/test_fusionenv.py' to convert raw fusion data to the format required by offline RL.
+- Please start from converting the raw fusion data to the format required by offline RL:
+    ```bash
+    python preparation/process_raw_data.py
+    ```
 
 - You can run different offline RL algorithms simply by:
     ```bash
     python examples/run_XXX.py
     ```
-    - You need to change several arguments in 'examples/run_XXX.py', including the raw data dir, dynamics model dir, reference shot, tracking target, etc.
     - XXX can be one of [cql, iql, edac, mcq, td3bc, combo, mobile, mopo, bambrl, rambo], where the first five algorithms are model-free and the rest are model-based.
+
+- Please find more instructions on how to run/extend the codebase in this [tutorial](https://drive.google.com/file/d/1PVcsTshC1FaqZ9pweT0eW_SvUdu-ZaWu/view?usp=sharing).
