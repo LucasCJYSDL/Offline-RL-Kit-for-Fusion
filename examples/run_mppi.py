@@ -203,7 +203,6 @@ class mppi_runner():
         # nominal control sequence
         U_nominal = np.zeros((args.horizon, args.action_dim))
 
-    def run(self):
         # log
         log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args))
         # key: output file name, value: output handler type
@@ -215,7 +214,7 @@ class mppi_runner():
         self.logger = Logger(log_dirs, output_config)
         # logger.log_hyperparameters(vars(args))
 
-        
+    def run(self):
         U_init_pad = np.zeros((self.horizon, self.action_dim))
         U_init = None #np.zeros((horizon, action_dim)) # TODO: optimize initialization method
         if U_init is not None: 
