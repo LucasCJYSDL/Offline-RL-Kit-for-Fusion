@@ -191,12 +191,12 @@ class mppi_runner:
         self.device = torch.device("cpu")
 
         # MPPI hyperparameters
-        self.num_samples = 10  # number of trajectory samples
-        self.horizon = 2       # planning horizon steps
+        self.num_samples = 100  # number of trajectory samples
+        self.horizon = 20       # planning horizon steps
         self.temperature = 2.0  # weighting temperature param
         self.noise_var = 1      # control noise variance
         self.time_step = 0      # initial time step
-        self.num_envs = 1       # number of environments to parallelly process
+        self.num_envs = 100       # number of environments to parallelly process
 
         self.offline_data_dir = "/home/scratch/linmo/fusion_data/noshape_gas_flat_top/general_data_rl.h5"  # must run from examples folder
         self.rnn_model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_gas_flat_top_step_two_logvar"
