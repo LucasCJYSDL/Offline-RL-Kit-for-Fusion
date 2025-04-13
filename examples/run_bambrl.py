@@ -11,12 +11,12 @@ from offlinerlkit.nets import MLP
 from offlinerlkit.modules import ActorProb, Critic, TanhDiagGaussian, EnsembleDynamicsModel
 from offlinerlkit.dynamics import BayesEnsembleDynamics
 from offlinerlkit.utils.scheduler import LinearParameter
-from offlinerlkit.buffer import BayesReplayBuffer, SLReplaBuffer
+from offlinerlkit.buffer import BayesReplayBuffer, SLReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MBPolicyTrainer
 from offlinerlkit.policy import BAMBRLPolicy
 from offlinerlkit.utils.searcher import Searcher
-from preparation.get_rl_data_envs import get_rl_data_envs
+from rl_preparation.get_rl_data_envs import get_rl_data_envs
 
 
 def get_args():
@@ -179,7 +179,7 @@ def train(args=get_args()):
 
     if args.use_sl:
         sl_buffer_size = int(args.rollout_length * args.rollout_batch_size * args.search_ratio * args.model_retain_epochs_sl) # ipt
-        sl_buffer = SLReplaBuffer(args.action_dim, np.prod(args.obs_shape), args.search_n_actions, capacity=sl_buffer_size)
+        sl_buffer = SLReplayBuffer(args.action_dim, np.prod(args.obs_shape), args.search_n_actions, capacity=sl_buffer_size)
         entropy_coe_scheduler = LinearParameter(start=0.01, end=0.001, num_steps=args.epoch * args.step_per_epoch)
     else:
         sl_buffer = None

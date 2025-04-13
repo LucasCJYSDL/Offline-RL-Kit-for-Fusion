@@ -4,8 +4,8 @@ import pickle
 import os, sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from preparation.state_actuator_spaces import state_names_to_idxs, actuator_names_to_idxs, get_target_indices
-from preparation.process_raw_data import raw_data_dir, general_data_path, tracking_data_path, reference_shot, training_model_dir, evaluation_model_dir, change_every
+from rl_preparation.state_actuator_spaces import state_names_to_idxs, actuator_names_to_idxs, get_target_indices
+from rl_preparation.process_raw_data import raw_data_dir, general_data_path, tracking_data_path, reference_shot, training_model_dir, evaluation_model_dir, change_every
 from envs.utils.setup_targets import fixed_ref_shot_targets, step_function_targets
 
 # load the offline dataset from the disk

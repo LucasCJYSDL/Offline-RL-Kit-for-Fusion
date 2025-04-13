@@ -14,7 +14,7 @@ from offlinerlkit.buffer import ReplayBuffer
 from offlinerlkit.utils.logger import Logger, make_log_dirs
 from offlinerlkit.policy_trainer import MFPolicyTrainer
 from offlinerlkit.policy import IQLPolicy
-from preparation.get_rl_data_envs import get_rl_data_envs
+from rl_preparation.get_rl_data_envs import get_rl_data_envs
 
 
 def get_args():

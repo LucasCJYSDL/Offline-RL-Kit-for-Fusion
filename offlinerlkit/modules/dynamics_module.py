@@ -51,7 +51,6 @@ class EnsembleDynamicsModel(nn.Module):
             for memb in self.all_models:
                 net_input_n = memb.normalizer.normalize(net_input, 0)
                 net_output_n, info = memb.single_sample_output_from_torch(net_input_n, with_grad=with_grad) # we have updated the rpnn class in the dynamics toolbox
-
                 mean = memb.normalizer.unnormalize(info["mean_predictions"], 1)
                 std = getattr(memb.normalizer, f'{1}_scaling') * info["std_predictions"] # danger
                 if not is_tensor:

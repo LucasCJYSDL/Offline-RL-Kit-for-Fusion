@@ -25,9 +25,10 @@ def get_raw_data(offline_data_dir, reference_shot, action_bound_file, shot_range
     offline_data['pre_actions'] = hdf['actuators'][:]
     offline_data['action_deltas'] = hdf['next_actuators'][:]
     offline_data['shotnum'] = hdf['shotnum'][:]
+    offline_data['time'] = hdf['time'][:]
     hdf.close()
 
-    # the first 30 steps are dirty, because next_obs is not the same as obs + obs_delta
+    # DANGER, the first 30 steps are dirty, because next_obs is not the same as obs + obs_delta
     # so we filter out the first 30 time steps
     mask = []
     old_shot_num = -1
@@ -48,6 +49,7 @@ def get_raw_data(offline_data_dir, reference_shot, action_bound_file, shot_range
     offline_data['pre_actions'] = offline_data['pre_actions'][mask]
     offline_data['action_deltas'] = offline_data['action_deltas'][mask]
     offline_data['shotnum'] = offline_data['shotnum'][mask]
+    offline_data['time'] = offline_data['time'][mask]
     tot_num = offline_data['shotnum'].shape[0] # the total number of shots
 
     # get the action bounds
@@ -83,7 +85,9 @@ def get_raw_data(offline_data_dir, reference_shot, action_bound_file, shot_range
     ts = 0
     for i in tqdm(range(tot_num-1)):
         offline_data['time_step'].append(ts)
-        if offline_data['shotnum'][i+1] != offline_data['shotnum'][i]:
+        # if offline_data['shotnum'][i+1] != offline_data['shotnum'][i]:
+        # DANGER, comes from the function sort_by_continuous_snippets
+        if offline_data['shotnum'][i+1] != offline_data['shotnum'][i] or (offline_data['time'][i+1] - offline_data['time'][i]) > 100: # TODO: adjust this threshold
             offline_data['terminals'].append(True)
             ts = 0
         else:
@@ -97,7 +101,7 @@ def get_raw_data(offline_data_dir, reference_shot, action_bound_file, shot_range
     return offline_data
 
 
-def store_offline_dataset(offline_dst, model_dir, general_data_path, ref_shot, tracking_shot_range, tracking_data_path, device):
+def store_offlinerl_dataset(offline_dst, model_dir, general_data_path, ref_shot, tracking_shot_range, tracking_data_path, device):
     general_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
                     'terminals': [], 'time_step': [], 'hidden_states': []}
     tracking_data = {}
@@ -110,6 +114,7 @@ def store_offline_dataset(offline_dst, model_dir, general_data_path, ref_shot, t
         memb.eval()
     
     # go over the training dataset, generate/collect the hidden states, time-costly!
+    # TODO: filter out shots that are too short
     shot_num_list = list(offline_dst['ref_start_index'].keys())
     for cur_shot in tqdm(shot_num_list):
         t = offline_dst['ref_start_index'][cur_shot][0]
@@ -117,6 +122,7 @@ def store_offline_dataset(offline_dst, model_dir, general_data_path, ref_shot, t
 
         # initialize this target shot
         if abs(cur_shot - ref_shot) <= tracking_shot_range:
+            terminated = False
             tracking_data[cur_shot] = {'tracking_states': [], 'tracking_next_states': [], 'tracking_pre_actions': [], 'tracking_actions': []}
         
         while True:                
@@ -136,7 +142,7 @@ def store_offline_dataset(offline_dst, model_dir, general_data_path, ref_shot, t
             general_data['time_step'].append(offline_dst['time_step'][t])
 
             # collect tracking data
-            if cur_shot in tracking_data:
+            if cur_shot in tracking_data and not terminated:
                 tracking_data[cur_shot]['tracking_states'].append(cur_state.copy())
                 tracking_data[cur_shot]['tracking_next_states'].append(next_state.copy())
                 tracking_data[cur_shot]['tracking_pre_actions'].append(pre_action.copy())
@@ -144,6 +150,7 @@ def store_offline_dataset(offline_dst, model_dir, general_data_path, ref_shot, t
 
             # end of shot - time to get the hidden states
             if offline_dst['terminals'][t]:
+                terminated = True
                 # prepare the input
                 s_id = len(general_data['hidden_states'])
                 shot_states = np.array(general_data['observations'][s_id:])
@@ -162,12 +169,16 @@ def store_offline_dataset(offline_dst, model_dir, general_data_path, ref_shot, t
                     memb_out_list.append(memb_out)
                 shot_hidden_states = torch.stack(memb_out_list, dim=1).cpu().tolist()
                 general_data['hidden_states'].extend(shot_hidden_states)
-
-                break
             
             # otherwise, prepare for the next time step
             t += 1
-            cur_state = next_state
+            if offline_dst['shotnum'][t] != cur_shot:
+                break
+            
+            # if not offline_dst['terminals'][t-1]:
+            #     cur_state = next_state # TODO: which one is better
+            # else:
+            cur_state = offline_dst['observations'][t]
     
     # post process
     for k in general_data:

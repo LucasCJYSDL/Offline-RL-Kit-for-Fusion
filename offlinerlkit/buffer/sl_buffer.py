@@ -4,7 +4,7 @@ from collections import namedtuple
 
 SL_Transition = namedtuple('SL_Transition', ('state', 'action_list', 'action_num', 'action_dist', 'q'))
 
-class SLReplaBuffer:
+class SLReplayBuffer:
     def __init__(self, action_dim, state_dim, num_sampled_actions, capacity=1e6):
         self.capacity = int(capacity)
         self._action_dim = action_dim

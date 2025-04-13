@@ -18,7 +18,7 @@ from offlinerlkit.policy_trainer import MBPolicyTrainer
 from offlinerlkit.policy import COMBOPolicy
 
 from gym.spaces import Box
-from preparation.get_rl_data_envs import get_rl_data_envs
+from rl_preparation.get_rl_data_envs import get_rl_data_envs
 
 
 """

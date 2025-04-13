@@ -7,7 +7,7 @@ from collections import defaultdict
 from offlinerlkit.policy import MOBILEPolicy
 from offlinerlkit.utils.searcher import Searcher
 from offlinerlkit.utils.scheduler import LinearParameter
-from offlinerlkit.buffer import SLReplaBuffer, SL_Transition
+from offlinerlkit.buffer import SLReplayBuffer, SL_Transition
 from torch.distributions import Normal, Independent
 
 class BAMBRLPolicy(MOBILEPolicy):
@@ -19,7 +19,7 @@ class BAMBRLPolicy(MOBILEPolicy):
         search_ratio: float,
         sl_policy_only: bool,
         searcher: Searcher,
-        sl_buffer: SLReplaBuffer,
+        sl_buffer: SLReplayBuffer,
         entropy_coe_scheduler: LinearParameter,
         dynamics,
         actor: nn.Module,
