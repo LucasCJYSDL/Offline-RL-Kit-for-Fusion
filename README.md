@@ -1,8 +1,24 @@
-# Offline RL Kit
+# Offline RL Kit for Nuclear Fusion
+
+## Requirements
 
 - Please refer to [OfflineRL-Kit](https://github.com/yihaosun1124/OfflineRL-Kit) for environment configuration. Notably, we don't require MuJoCo or D4RL.
 
 - You would also need [dynamics-toolbox](https://github.com/LucasCJYSDL/dynamics-toolbox). This toolbox is different from Ian's, as we have changed the rpnn class.
+
+## Dynamics Modelling
+
+- (Optional) As an alternative of real experiment data, we provide a script to synthesize data with an exisiting dynamics model:
+    ```bash
+    python dynamics/synthesize_rollouts.py
+    ```
+- You can train an ensemble of dynamics models by running the following command:
+    ```bash
+    python dynamics/train_dynamics.py
+    ```
+    - By default, the script will use the configuration specified by the "config_name" argument within "train_dynamics.py". You may optinally modify or add configuration files in "dynamics/cfgs".
+
+## Policy Learning
 
 - Please start from converting the raw fusion data to the format required by offline RL:
     ```bash
