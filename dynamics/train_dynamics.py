@@ -21,7 +21,7 @@ def train_single_model(cfg: DictConfig, ensemble_id: int, exp_id: int):
     cfg = OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
     with open_dict(cfg):
         # Update seed & save directory for uniqueness
-        cfg["seed"] = cfg["seed"] + ensemble_id + exp_id
+        cfg["seed"] = cfg["seed"] + cfg.get("ensemble_size") * exp_id + ensemble_id
         cfg["data_module"]["seed"] = cfg["seed"]
         cfg["data_module"]["save_dir"] = os.path.join(save_dir, str(cfg["seed"]))
         cfg["save_dir"] = os.path.join(save_dir, str(cfg["seed"]), "model")
