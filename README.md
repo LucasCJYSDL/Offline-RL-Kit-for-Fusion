@@ -20,15 +20,26 @@
 
 ## Policy Learning
 
-- Please start from converting the raw fusion data to the format required by offline RL:
+- Please start from converting the raw fusion data to the format required by offline RL or Imitation Learning:
     ```bash
-    python preparation/process_raw_data.py
+    python rl_preparation/process_raw_data.py
     ```
 
 - You can run different offline RL algorithms simply by:
     ```bash
-    python examples/run_XXX.py
+    python rl_scripts/run_XXX.py
     ```
     - XXX can be one of [cql, iql, edac, mcq, td3bc, combo, mobile, mopo, bambrl, rambo], where the first five algorithms are model-free and the rest are model-based.
+
+- You can run a goal-conditioned imitation learning algorithm by:
+    ```bash
+    python rl_scripts/run_gcil.py
+    ```
+
+- As an alternative, we provide scripts to run planning algorithms on the learned dynamics and distill policy functions from the planning results, which can be run by:
+    ```bash
+    python rl_scripts/run_YYY.py
+    ```
+    - YYY can be one of [mppi], to be extended.
 
 - Please find more instructions on how to run/extend the codebase in this [tutorial](https://drive.google.com/file/d/1PVcsTshC1FaqZ9pweT0eW_SvUdu-ZaWu/view?usp=sharing).

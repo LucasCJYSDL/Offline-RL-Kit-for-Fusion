@@ -45,7 +45,7 @@ class SA_processor: # used for both training and evaluation
         is_np = True if type(state) == np.ndarray else False
 
         if np.isscalar(batch_idx):
-            batch_idx = np.array([batch_idx])
+            batch_idx = np.array([batch_idx for _ in range(state.shape[0])])
         else:
             batch_idx = np.array(batch_idx)
 
@@ -173,14 +173,14 @@ class NFBaseEnv: # env for evaluation
         # proceed to the next time step
         self.cur_state = self.cur_state + ensemble_preds # the next state, TODO: use the true value for the unselected dimensions
         return_state = self.cur_state[:, self.state_idxs]
-        reward = self.get_reward(return_state.cpu().numpy(), self.cur_time, shot_id=self.ref_shot_id) # next state and current time step
+        reward = self.get_reward(return_state.cpu().numpy(), self.cur_time, shot_id=self.ref_shot_id)[0] # next state and current time step
         self.cur_time += 1
         self.pre_action = cur_action.clone()
 
         return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, self.is_done(self.cur_time), {}
 
     def get_reward(self, next_state, time_step, shot_id):
-        return self.sa_processor.get_reward(next_state, time_step, shot_id)[0] 
+        return self.sa_processor.get_reward(next_state, time_step, shot_id)
         
     def is_done(self, time_step):
         # terminates when exceeding the time limit of the shot

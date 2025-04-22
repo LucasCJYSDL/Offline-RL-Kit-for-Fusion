@@ -15,7 +15,26 @@ from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_pare
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-def get_raw_data(offline_data_dir, reference_shot, action_bound_file, shot_range): 
+
+def _post_process(general_data, offline_dst):
+    for k in general_data:
+        general_data[k] = np.array(general_data[k])
+        print(k, general_data[k].shape) # for sanity check
+    
+    # applying the actuator bounds, optional
+    general_data['action_lower_bounds'] = offline_dst['action_lower_bounds'].copy()
+    general_data['action_upper_bounds'] = offline_dst['action_upper_bounds'].copy()
+    general_data['pre_actions'] = np.clip(general_data['pre_actions'], general_data['action_lower_bounds'], general_data['action_upper_bounds'])
+    general_data['actions'] = np.clip(general_data['actions'], general_data['action_lower_bounds'], general_data['action_upper_bounds'])
+
+
+def _dump_data(data_path, data_dict):
+    with h5py.File(data_path, 'w') as hdf:
+        for key, value in data_dict.items():
+            hdf.create_dataset(key, data=value)
+
+
+def get_raw_data(offline_data_dir, action_bound_file, shot_list, warmup_steps): 
 
     offline_data = {}
     # get main components
@@ -41,7 +60,7 @@ def get_raw_data(offline_data_dir, reference_shot, action_bound_file, shot_range
         else:
             shot_num_count += 1
         
-        if shot_num_count >= 30:
+        if shot_num_count >= warmup_steps:
             mask.append(i)
     
     offline_data['observations'] = offline_data['observations'][mask]
@@ -70,11 +89,11 @@ def get_raw_data(offline_data_dir, reference_shot, action_bound_file, shot_range
     offline_data['action_lower_bounds'] = np.array(offline_data['action_lower_bounds'])
     offline_data['action_upper_bounds'] = np.array(offline_data['action_upper_bounds'])
 
-    # we only take shots around the reference shot
+    # we only take shots in the shot list
     ref_start_index = defaultdict(list)
     for i in range(tot_num):
         shot_num = int(offline_data['shotnum'][i])
-        if abs(shot_num - reference_shot) <= shot_range: # very important hyperparameter
+        if shot_num in shot_list:
             if len(ref_start_index[shot_num]) < 10: # for each shot we take, we have 10 possible starting points
                 ref_start_index[shot_num].append(i)
     offline_data['ref_start_index'] = ref_start_index
@@ -85,9 +104,9 @@ def get_raw_data(offline_data_dir, reference_shot, action_bound_file, shot_range
     ts = 0
     for i in tqdm(range(tot_num-1)):
         offline_data['time_step'].append(ts)
-        # if offline_data['shotnum'][i+1] != offline_data['shotnum'][i]:
+        if offline_data['shotnum'][i+1] != offline_data['shotnum'][i]:
         # DANGER, comes from the function sort_by_continuous_snippets
-        if offline_data['shotnum'][i+1] != offline_data['shotnum'][i] or (offline_data['time'][i+1] - offline_data['time'][i]) > 100: # TODO: adjust this threshold
+        # if offline_data['shotnum'][i+1] != offline_data['shotnum'][i] or (offline_data['time'][i+1] - offline_data['time'][i]) > 100: # TODO: adjust this threshold
             offline_data['terminals'].append(True)
             ts = 0
         else:
@@ -101,9 +120,11 @@ def get_raw_data(offline_data_dir, reference_shot, action_bound_file, shot_range
     return offline_data
 
 
-def store_offlinerl_dataset(offline_dst, model_dir, general_data_path, ref_shot, tracking_shot_range, tracking_data_path, device):
-    general_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
-                    'terminals': [], 'time_step': [], 'hidden_states': []}
+def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, tracking_data_path, rl_shot_list, il_shot_list, tracking_shot_list, device):
+    rl_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
+                'terminals': [], 'time_step': [], 'hidden_states': []}
+    il_data = {'observations': [], 'pre_actions': [], 'actions': [], 'next_observations': [], 
+                'terminals': [], 'time_step': []}
     tracking_data = {}
     
     # load the rnn model ensemble used for training
@@ -121,25 +142,34 @@ def store_offlinerl_dataset(offline_dst, model_dir, general_data_path, ref_shot,
         cur_state = offline_dst['observations'][t]
 
         # initialize this target shot
-        if abs(cur_shot - ref_shot) <= tracking_shot_range:
+        if cur_shot in tracking_shot_list:
             terminated = False
             tracking_data[cur_shot] = {'tracking_states': [], 'tracking_next_states': [], 'tracking_pre_actions': [], 'tracking_actions': []}
         
         while True:                
 
-            # collect general data from this time step
+            # collect training data for rl and il
             pre_action = offline_dst['pre_actions'][t]
             action_delta = offline_dst['action_deltas'][t]
             state_delta = offline_dst['observations_delta'][t]
             next_state = cur_state + state_delta
             cur_action = pre_action + action_delta
 
-            general_data['observations'].append(cur_state.copy())
-            general_data['pre_actions'].append(pre_action.copy())
-            general_data['actions'].append(cur_action.copy())
-            general_data['next_observations'].append(next_state.copy())
-            general_data['terminals'].append(offline_dst['terminals'][t])
-            general_data['time_step'].append(offline_dst['time_step'][t])
+            if cur_shot in rl_shot_list:
+                rl_data['observations'].append(cur_state.copy())
+                rl_data['pre_actions'].append(pre_action.copy())
+                rl_data['actions'].append(cur_action.copy())
+                rl_data['next_observations'].append(next_state.copy())
+                rl_data['terminals'].append(offline_dst['terminals'][t])
+                rl_data['time_step'].append(offline_dst['time_step'][t])
+            
+            if cur_shot in il_shot_list:
+                il_data['observations'].append(cur_state.copy())
+                il_data['pre_actions'].append(pre_action.copy())
+                il_data['actions'].append(cur_action.copy())
+                il_data['next_observations'].append(next_state.copy())
+                il_data['terminals'].append(offline_dst['terminals'][t])
+                il_data['time_step'].append(offline_dst['time_step'][t])
 
             # collect tracking data
             if cur_shot in tracking_data and not terminated:
@@ -151,24 +181,25 @@ def store_offlinerl_dataset(offline_dst, model_dir, general_data_path, ref_shot,
             # end of shot - time to get the hidden states
             if offline_dst['terminals'][t]:
                 terminated = True
-                # prepare the input
-                s_id = len(general_data['hidden_states'])
-                shot_states = np.array(general_data['observations'][s_id:])
-                shot_pre_actions = np.array(general_data['pre_actions'][s_id:])
-                shot_cur_actions = np.array(general_data['actions'][s_id:])
-                net_input = torch.cat([torch.FloatTensor(shot_states).to(device), 
-                                       torch.FloatTensor(shot_pre_actions).to(device),
-                                       torch.FloatTensor(shot_cur_actions - shot_pre_actions).to(device)], dim=-1)
-                
-                # inference with the rpnn dynamics model
-                memb_out_list = []
-                for memb in all_models:
-                    memb.reset() # optional
-                    net_input_n = memb.normalizer.normalize(net_input, 0)
-                    memb_out = memb.get_mem_out(net_input_n).unsqueeze(1)
-                    memb_out_list.append(memb_out)
-                shot_hidden_states = torch.stack(memb_out_list, dim=1).cpu().tolist()
-                general_data['hidden_states'].extend(shot_hidden_states)
+                if cur_shot in rl_shot_list:
+                    # prepare the input
+                    s_id = len(rl_data['hidden_states'])
+                    shot_states = np.array(rl_data['observations'][s_id:])
+                    shot_pre_actions = np.array(rl_data['pre_actions'][s_id:])
+                    shot_cur_actions = np.array(rl_data['actions'][s_id:])
+                    net_input = torch.cat([torch.FloatTensor(shot_states).to(device), 
+                                        torch.FloatTensor(shot_pre_actions).to(device),
+                                        torch.FloatTensor(shot_cur_actions - shot_pre_actions).to(device)], dim=-1)
+                    
+                    # inference with the rpnn dynamics model
+                    memb_out_list = []
+                    for memb in all_models:
+                        memb.reset() # optional
+                        net_input_n = memb.normalizer.normalize(net_input, 0)
+                        memb_out = memb.get_mem_out(net_input_n).unsqueeze(1)
+                        memb_out_list.append(memb_out)
+                    shot_hidden_states = torch.stack(memb_out_list, dim=1).cpu().tolist()
+                    rl_data['hidden_states'].extend(shot_hidden_states)
             
             # otherwise, prepare for the next time step
             t += 1
@@ -181,15 +212,8 @@ def store_offlinerl_dataset(offline_dst, model_dir, general_data_path, ref_shot,
             cur_state = offline_dst['observations'][t]
     
     # post process
-    for k in general_data:
-        general_data[k] = np.array(general_data[k])
-        print(k, general_data[k].shape) # for sanity check
-    
-    # applying the actuator bounds, optional
-    general_data['action_lower_bounds'] = offline_dst['action_lower_bounds'].copy()
-    general_data['action_upper_bounds'] = offline_dst['action_upper_bounds'].copy()
-    general_data['pre_actions'] = np.clip(general_data['pre_actions'], general_data['action_lower_bounds'], general_data['action_upper_bounds'])
-    general_data['actions'] = np.clip(general_data['actions'], general_data['action_lower_bounds'], general_data['action_upper_bounds'])
+    _post_process(rl_data, offline_dst)
+    _post_process(il_data, offline_dst)
 
     # same for the tracking data
     for shot_id in tracking_data:
@@ -197,14 +221,13 @@ def store_offlinerl_dataset(offline_dst, model_dir, general_data_path, ref_shot,
             tracking_data[shot_id][k] = np.array(tracking_data[shot_id][k])
 
         tracking_data[shot_id]['tracking_pre_actions'] = np.clip(tracking_data[shot_id]['tracking_pre_actions'], 
-                                                                 general_data['action_lower_bounds'], general_data['action_upper_bounds'])
+                                                                 rl_data['action_lower_bounds'], rl_data['action_upper_bounds'])
         tracking_data[shot_id]['tracking_actions'] = np.clip(tracking_data[shot_id]['tracking_actions'], 
-                                                             general_data['action_lower_bounds'], general_data['action_upper_bounds'])
+                                                             rl_data['action_lower_bounds'], rl_data['action_upper_bounds'])
     
-    # save the general data
-    with h5py.File(general_data_path, 'w') as hdf:
-        for key, value in general_data.items():
-            hdf.create_dataset(key, data=value)
+    # save the training data
+    _dump_data(rl_data_path, rl_data)
+    _dump_data(il_data_path, il_data)
 
     # save the tracking data
     with h5py.File(tracking_data_path, 'w') as hdf:

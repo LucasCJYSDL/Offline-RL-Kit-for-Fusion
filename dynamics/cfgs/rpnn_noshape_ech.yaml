@@ -73,7 +73,7 @@ data_module:
   train_from_start_only: true
   prop_validation: 0.05 # To specify
   seed: ${seed} 
-  bootstrapped: True # To specify
+  bootstrapped: true # To specify
 
 # hydra:
 #     run:

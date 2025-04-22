@@ -1,28 +1,38 @@
+import os 
+os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
+
 import h5py
 import numpy as np
 import pickle
-import os, sys
-
+import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from rl_preparation.state_actuator_spaces import state_names_to_idxs, actuator_names_to_idxs, get_target_indices
-from rl_preparation.process_raw_data import raw_data_dir, general_data_path, tracking_data_path, reference_shot, training_model_dir, evaluation_model_dir, change_every
+from rl_preparation.process_raw_data import raw_data_dir, rl_data_path, il_data_path, tracking_data_path, reference_shot, training_model_dir, evaluation_model_dir, change_every
 from envs.utils.setup_targets import fixed_ref_shot_targets, step_function_targets
 
 # load the offline dataset from the disk
-def load_offline_data(env, tracking_target):
+def load_offline_data(env, tracking_target, is_il):
     # get general data 
     offline_data = {}
-    with h5py.File(general_data_path, 'r') as hdf:
-        offline_data['observations'] = hdf['observations'][:]
-        offline_data['hidden_states'] = hdf['hidden_states'][:]
-        offline_data['actions'] = hdf['actions'][:]
-        offline_data['pre_actions'] = hdf['pre_actions'][:]
-        offline_data['next_observations'] = hdf['next_observations'][:]
-        offline_data['terminals'] = hdf['terminals'][:]
-        offline_data['time_step'] = hdf['time_step'][:]
 
-        offline_data['action_lower_bounds'] = hdf['action_lower_bounds'][:]
-        offline_data['action_upper_bounds'] = hdf['action_upper_bounds'][:]
+    if is_il:
+        general_data_path = il_data_path
+    else:
+        general_data_path = rl_data_path
+    
+    hdf = h5py.File(general_data_path, 'r')
+    offline_data['observations'] = hdf['observations'][:]
+    offline_data['actions'] = hdf['actions'][:]
+    offline_data['pre_actions'] = hdf['pre_actions'][:]
+    offline_data['next_observations'] = hdf['next_observations'][:]
+    offline_data['terminals'] = hdf['terminals'][:]
+    offline_data['time_step'] = hdf['time_step'][:]
+    offline_data['action_lower_bounds'] = hdf['action_lower_bounds'][:]
+    offline_data['action_upper_bounds'] = hdf['action_upper_bounds'][:]
+    if not is_il:
+        offline_data['hidden_states'] = hdf['hidden_states'][:]
+    hdf.close()
     
     offline_data['obs_dim'] = offline_data['observations'].shape[1]
     offline_data['act_dim'] = offline_data['actions'].shape[1]
@@ -94,8 +104,8 @@ def load_offline_data(env, tracking_target):
     return offline_data, tracking_data
 
 # get the offline rl data (in d4rl format) and training
-def get_rl_data_envs(env_id, task, device):
-    offline_data, tracking_data = load_offline_data(env_id, task)
+def get_rl_data_envs(env_id, task, device, is_il=False):
+    offline_data, tracking_data = load_offline_data(env_id, task, is_il)
 
     if env_id == 'base':
         from envs.base_env import NFBaseEnv, SA_processor

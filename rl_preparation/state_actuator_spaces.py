@@ -2,29 +2,36 @@ import pickle
 
 #!!! what you need to specify
 # which states/actuators are actually used
-obs_in_use = ["betan_EFIT01",
-                "temp_component1", 
-                "temp_component2", 
-                "temp_component3", 
-                "temp_component4", 
-                "itemp_component1", 
-                "itemp_component2", 
-                "itemp_component3", 
-                "itemp_component4", 
-                "dens_component1", 
-                "dens_component2", 
-                "dens_component3", 
-                "dens_component4", 
-                "rotation_component1", 
-                "rotation_component2", 
-                "rotation_component3", 
-                "rotation_component4", 
-                "pres_EFIT01_component1", 
-                "pres_EFIT01_component2", 
-                "q_EFIT01_component1", 
-                "q_EFIT01_component2"]
+# obs_in_use = ["betan_EFIT01",
+#                 "temp_component1", 
+#                 "temp_component2", 
+#                 "temp_component3", 
+#                 "temp_component4", 
+#                 "itemp_component1", 
+#                 "itemp_component2", 
+#                 "itemp_component3", 
+#                 "itemp_component4", 
+#                 "dens_component1", 
+#                 "dens_component2", 
+#                 "dens_component3", 
+#                 "dens_component4", 
+#                 "rotation_component1", 
+#                 "rotation_component2", 
+#                 "rotation_component3", 
+#                 "rotation_component4", 
+#                 "pres_EFIT01_component1", 
+#                 "pres_EFIT01_component2", 
+#                 "q_EFIT01_component1", 
+#                 "q_EFIT01_component2"]
 
-acts_in_use= ['pinj','tinj', 'bt_magnitude', 'bt_is_positive','ech_pwr_total']
+obs_in_use = ["dens_component1", 
+              "dens_component2", 
+              "dens_component3", 
+              "dens_component4"]
+
+# acts_in_use= ['pinj','tinj', 'bt_magnitude', 'bt_is_positive','ech_pwr_total']
+
+acts_in_use= ['pinj','tinj', 'gasA', 'ech_pwr_total']
 
 # functions that you do not need to modify
 def state_names_to_idxs(data_path):

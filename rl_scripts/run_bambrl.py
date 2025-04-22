@@ -70,10 +70,10 @@ def get_args():
 
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
-    parser.add_argument("--task", type=str, default="betan_EFIT01") #?
+    parser.add_argument("--task", type=str, default="dens") #?
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--search_with_hidden_state", type=bool, default=False) # when you do MCTS, whether to use the hidden state of the rpnn dynamics model; time-costly if true
-    parser.add_argument("--cuda_id", type=int, default=3)
+    parser.add_argument("--cuda_id", type=int, default=2)
 
     return parser.parse_args()
 

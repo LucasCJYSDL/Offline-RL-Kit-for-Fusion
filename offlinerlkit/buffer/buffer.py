@@ -125,7 +125,6 @@ class ReplayBuffer:
             if hidden:
                 self.hidden_states = np.array(dataset["hidden_states"], dtype=np.float32)
                 self.full_next_observations = np.array(dataset["full_next_observations"], dtype=self.obs_dtype)
-            
      
     def normalize_obs(self, eps: float = 1e-3) -> Tuple[np.ndarray, np.ndarray]:
         mean = self.observations.mean(0, keepdims=True)

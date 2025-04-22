@@ -90,20 +90,20 @@ def synthesize_rollouts(offline_dst, raw_data_dir, model_dir, data_dir, device):
         pickle.dump(data_info, f)
     
 
-
 if __name__ == "__main__":
     #!!! what you need to specify 
     raw_data_dir = "/home/scratch/jiayuc2/fusion_data/noshape_ech" # the raw data
     model_dir = "/home/scratch/jiayuc2/fusion_model/rpnn_noshape_ech" # the rpnn dynamics model to synthesize data
     action_bound_file = "noshape_ech.yaml" # actuator bounds, which you probably don't need to change
     reference_shot = 189268 
-    shot_range = 50 # we would collect shots in the range [reference_shot-shot_range, reference_shot+shot_range]
+    shot_list = list(range(reference_shot - 50, reference_shot + 50)) # list of shots for training dynamics
+    warmup_steps = 5 # we won't involve the first () steps of each shot in the training dataset
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # directory to store the synthesized data
     synthesized_data_dir = raw_data_dir + '_synthesized'
 
     # preprocess the raw data 
-    offline_dst = get_raw_data(raw_data_dir, reference_shot, action_bound_file, shot_range) 
+    offline_dst = get_raw_data(raw_data_dir, action_bound_file, shot_list, warmup_steps) 
     # synthesize rollouts based on the learned dynamics models
     synthesize_rollouts(offline_dst, raw_data_dir, model_dir, synthesized_data_dir, device)
