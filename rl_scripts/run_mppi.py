@@ -27,8 +27,8 @@ def get_args():
 
     # hyperparameters for planning
     parser.add_argument("--gamma", type=float, default=1.0) # discount factor, not used for now
-    parser.add_argument("--penalty-coef", type=float, default=0.0) # reward penalty
-    parser.add_argument("--episodes_per_shot", type=int, default=2) # how many times to evaluate per shot id
+    parser.add_argument("--penalty-coef", type=float, default=2.5) # reward penalty
+    parser.add_argument("--episodes_per_shot", type=int, default=10) # repeat () times per shot id
     parser.add_argument("--num_envs", type=int, default=1000) # number of parallel environments for planning
     parser.add_argument("--horizon", type=int, default=40) # prediction horizon, i.e., length of the action sequence
     parser.add_argument("--num_samples", type=int, default=1000) # number of action sequences to sample
@@ -37,11 +37,11 @@ def get_args():
     # hyperparameters for policy distillation
     parser.add_argument("--actor-lr", type=float, default=3e-4)
     parser.add_argument("--hidden-dims", type=int, nargs='*', default=[256, 256, 256])
-    parser.add_argument("--epoch", type=int, default=200)
+    parser.add_argument("--epoch", type=int, default=1000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument("--stochastic_actor", type=bool, default=False)
+    parser.add_argument("--stochastic_actor", type=bool, default=True)
 
     #!!! what you need to specify
     parser.add_argument("--load_data", type=bool, default=False) # true, if you already have the planning result and want to skip the planning process
@@ -74,7 +74,7 @@ def train(args=get_args()):
     env.seed(args.seed)
 
     # log
-    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["horizon", "num_samples", "lam"])
+    log_dirs = make_log_dirs(args.task, args.algo_name, args.seed, vars(args), record_params=["horizon", "num_samples", "lam", "penalty_coef"])
     # key: output file name, value: output handler type
     output_config = {
         "consoleout_backup": "stdout",

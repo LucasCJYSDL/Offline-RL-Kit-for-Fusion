@@ -14,6 +14,12 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
         self.eval_shot_list = list(tracking_data.keys())
         self.tracking_data = tracking_data
 
+    def get_eval_shot_list(self):
+        """
+        return the list of shots for evaluation
+        """
+        return self.eval_shot_list
+
     def reset(self, shot_id=None):
         # randomly sample a shot for evaluation
         if shot_id is None:
@@ -88,4 +94,4 @@ class ProfileControlEnv(NFBaseEnv): # env for evaluation
         else:
             reward = reward[0]
 
-        return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, done, {'means': means, 'stds': stds}
+        return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, done, {'means': means, 'stds': stds, "time_step": self.cur_time}

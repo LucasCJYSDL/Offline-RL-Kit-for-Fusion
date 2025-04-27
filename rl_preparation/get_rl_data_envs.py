@@ -7,7 +7,7 @@ import pickle
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from rl_preparation.state_actuator_spaces import state_names_to_idxs, actuator_names_to_idxs, get_target_indices
+from rl_preparation.state_actuator_spaces import state_names_to_idxs, actuator_names_to_idxs, get_target_indices, acts_in_use
 from rl_preparation.process_raw_data import raw_data_dir, rl_data_path, il_data_path, tracking_data_path, reference_shot, training_model_dir, evaluation_model_dir, change_every
 from envs.utils.setup_targets import fixed_ref_shot_targets, step_function_targets
 
@@ -48,10 +48,12 @@ def load_offline_data(env, tracking_target, is_il):
         data_info = pickle.load(file)
 
     offline_data['index_list'] = []
+    offline_data['tracking_target_names'] = []
     keyword = tracking_target
     for i in range(offline_data['obs_dim']):
         if data_info['state_space'][i].startswith(keyword):
             offline_data['index_list'].append(i)
+            offline_data['tracking_target_names'].append(data_info['state_space'][i])
 
     # get the tracking data
     tracking_data = {} 
@@ -65,13 +67,13 @@ def load_offline_data(env, tracking_target, is_il):
             shot = hdf[shot_id]
             for key in shot:
                 tracking_data[int(shot_id)][key] = shot[key][:]
-            
+
             # get targets for the tracking data (evaluation)
             if env == "base":
                 tracking_data[int(shot_id)]['tracking_ref'] = fixed_ref_shot_targets(ref_shot_next, offline_data['index_list'], None)
-            elif env == "profile_control": # TODO: use the second option (commented for now)
-                tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(ref_shot, offline_data['index_list'], None, change_every)
-                # tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], None, change_every)
+            elif env == "profile_control": # TODO: use the first option (commented for now)
+                # tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(ref_shot, offline_data['index_list'], None, change_every)
+                tracking_data[int(shot_id)]['tracking_ref'] = step_function_targets(tracking_data[int(shot_id)]['tracking_states'], offline_data['index_list'], None, change_every)
             else:
                 raise NotImplementedError
 
@@ -89,6 +91,7 @@ def load_offline_data(env, tracking_target, is_il):
     action_idxs = actuator_names_to_idxs(raw_data_dir)
     offline_data['state_idxs'] = state_idxs
     offline_data['action_idxs'] = action_idxs
+    offline_data['action_names'] = acts_in_use
 
     offline_data['observations'] = offline_data['observations'][:, state_idxs]
     offline_data['next_observations'] = offline_data['next_observations'][:, state_idxs]

@@ -25,18 +25,28 @@ class SA_processor: # used for both training and evaluation
         self.training_tracking_targets[:training_data_size] = offline_data['tracking_ref']
 
         self.eval_tracking_targets = {}
+        self.eval_traj_states = {}
+        self.eval_traj_actions = {}
         for key in tracking_data: # to avoid indexing issue, we use a padding trick here
             tracking_data_size = tracking_data[key]['tracking_ref'].shape[0]
             self.eval_tracking_targets[key] = np.array([tracking_data[key]['tracking_ref'][-1] for _ in range(tracking_data_size+1)])
             self.eval_tracking_targets[key][:tracking_data_size] = tracking_data[key]['tracking_ref']
             # self.eval_data_sizes[key] = tracking_data[key]['tracking_ref'].shape[0]
+            self.eval_traj_states[key] = tracking_data[key]["tracking_states"]
+            self.eval_traj_actions[key] = tracking_data[key]["tracking_actions"]
         
         # store idxs of the tracking targets to query them from the state
         # there could be multiple dimensions of the tracking target, so we may assign different coefficients to different dimensions.
-        self.idx_list = offline_data['index_list']
+        self.state_idxs = offline_data['state_idxs'] # selected state dimensions 
+        self.action_idxs = offline_data["action_idxs"]
+        self.idx_list = offline_data['index_list'] # indices corresponding to the target
         self.track_coefficients = np.array([1.0 for _ in range(len(self.idx_list))])
         coe = sum(self.track_coefficients)
         self.track_coefficients = self.track_coefficients / coe
+
+        # get names of the tracking quantities and actuators in control
+        self.tracking_target_names = offline_data['tracking_target_names']
+        self.action_names = offline_data['action_names']
     
     def get_rl_state(self, state, batch_idx, shot_id=None):
         """
@@ -98,6 +108,24 @@ class SA_processor: # used for both training and evaluation
         # this design is flexible - we are using "-mse" as the reaward
         return -1.0 * (np.square(next_state[:, self.idx_list] - targets) * self.track_coefficients[np.newaxis, :]).sum(axis=1) 
     
+    def get_plot_quantities(self, shot_id, time_step, state, action):
+        """
+        According to the shot id and time step, query the quantity target, real quantity, achieved quantity, real actuators, and actuators adopted by the controller.
+        """
+        target_quan = self.eval_tracking_targets[shot_id][time_step]
+        real_quan = self.eval_traj_states[shot_id][time_step][self.state_idxs][self.idx_list]
+        cur_quan = state[0, self.idx_list].cpu().numpy() # Note that this is correct only because state is the first component of the rl_state. 
+        real_act = self.eval_traj_actions[shot_id][time_step][self.action_idxs]
+        cur_act = self.get_step_action(action)[0]
+
+        return target_quan, real_quan, cur_quan, real_act, cur_act
+    
+    def get_plot_names(self):
+        """
+        Return the list of tracking targets and controllable actuators.
+        """
+        return self.tracking_target_names, self.action_names
+
 
 class NFBaseEnv: # env for evaluation
     def __init__(self, model_dir, sa_processor, general_data, tracking_data, ref_shot_id, device):
@@ -124,6 +152,12 @@ class NFBaseEnv: # env for evaluation
         for memb in self.all_models:
             memb.to(device)
             memb.eval()
+    
+    def get_eval_shot_list(self):
+        """
+        return the list of shots for evaluation
+        """
+        return [self.ref_shot_id]
 
     def seed(self, seed):
         """
@@ -132,7 +166,7 @@ class NFBaseEnv: # env for evaluation
         random.seed(seed)
         torch.manual_seed(seed)
 
-    def reset(self):
+    def reset(self, shot_id=None):
         """
         Reset at the beginning of an episode.
         """
@@ -177,7 +211,7 @@ class NFBaseEnv: # env for evaluation
         self.cur_time += 1
         self.pre_action = cur_action.clone()
 
-        return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, self.is_done(self.cur_time), {}
+        return self.sa_processor.get_rl_state(return_state, self.cur_time, shot_id=self.ref_shot_id), reward, self.is_done(self.cur_time), {"time_step": self.cur_time}
 
     def get_reward(self, next_state, time_step, shot_id):
         return self.sa_processor.get_reward(next_state, time_step, shot_id)
