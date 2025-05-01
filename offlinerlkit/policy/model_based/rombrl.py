@@ -485,7 +485,7 @@ class ROMBRLPolicy(MOBILEPolicy):
                 
                 # get the first gradient term 
                 J = gradient_masks * advantages * log_prob * discount_tensor # TODO: using returns (defined by rewards) instead of advantages
-                J = (J.sum(dim=0)).mean()
+                J = (J.sum(dim=0)).mean() # theoretically, it should divide the number of episodes
 
                 # J = torch.min(adv_loss_1, adv_loss_2).mean() # PPO loss
                 
@@ -599,6 +599,7 @@ class ROMBRLPolicy(MOBILEPolicy):
         dyn_adv_loss_list, sl_loss_list, dyn_all_loss_list = [], [], []
         for _ in tqdm(range(self.dynamics_training_epoch)):
             for rollout_data in self.onpolicy_buffer.get_traj(self.sl_batch_size): # TODO: maybe too much
+                # discount_tensor = self._get_discount_tensor(rollout_data.episode_starts) # TODO: specifically for sequence data
                 log_dyn_prob = self._evaluate_rollout_dynamics(rollout_data.dyn_net_inputs, rollout_data.episode_starts, 
                                                                rollout_data.dyn_samples, rollout_data.dyn_model_idxs)
                 
@@ -613,6 +614,8 @@ class ROMBRLPolicy(MOBILEPolicy):
                 dyn_adv_loss_1 = dyn_advantages * ratio
                 dyn_adv_loss_2 = dyn_advantages * torch.clamp(ratio, 1 - self.clip_range, 1 + self.clip_range)
                 dyn_adv_loss = torch.min(dyn_adv_loss_1, dyn_adv_loss_2).mean() # TODO: using log pi * adv instead
+                # dyn_adv_loss = ((torch.min(dyn_adv_loss_1, dyn_adv_loss_2) * discount_tensor).sum(0)).mean()
+                # dyn_adv_loss = (torch.min(dyn_adv_loss_1, dyn_adv_loss_2) * discount_tensor).mean()
 
                 # dyn_gradient_masks = (dyn_adv_loss_1 <= dyn_adv_loss_2).to(torch.float32).detach()
                 # dyn_adv_loss = (dyn_gradient_masks * dyn_advantages * log_dyn_prob).mean() # TODO: using returns (defined by rewards) instead of advantages
