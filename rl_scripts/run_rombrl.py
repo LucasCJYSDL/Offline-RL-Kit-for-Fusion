@@ -74,7 +74,7 @@ def get_args():
     #!!! what you need to specify
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="dens") #?
-    parser.add_argument("--update_hidden_states", type=bool, default=True) # whether to update the hidden states in the offline dataset, since the dynamics model is being updated with the rl policy
+    parser.add_argument("--update_hidden_states", type=bool, default=False) # whether to update the hidden states in the offline dataset, since the dynamics model is being updated with the rl policy
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--cuda_id", type=int, default=2)
 
