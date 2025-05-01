@@ -40,7 +40,7 @@ def get_raw_data(offline_data_dir, action_bound_file, shot_list, warmup_steps):
     # get main components
     hdf = h5py.File(offline_data_dir + '/full.hdf5', 'r')
     offline_data['observations'] = hdf['states'][:]
-    offline_data['observations_delta'] = hdf['next_states'][:]
+    offline_data['observation_deltas'] = hdf['next_states'][:]
     offline_data['pre_actions'] = hdf['actuators'][:]
     offline_data['action_deltas'] = hdf['next_actuators'][:]
     offline_data['shotnum'] = hdf['shotnum'][:]
@@ -64,7 +64,7 @@ def get_raw_data(offline_data_dir, action_bound_file, shot_list, warmup_steps):
             mask.append(i)
     
     offline_data['observations'] = offline_data['observations'][mask]
-    offline_data['observations_delta'] = offline_data['observations_delta'][mask]
+    offline_data['observation_deltas'] = offline_data['observation_deltas'][mask]
     offline_data['pre_actions'] = offline_data['pre_actions'][mask]
     offline_data['action_deltas'] = offline_data['action_deltas'][mask]
     offline_data['shotnum'] = offline_data['shotnum'][mask]
@@ -151,7 +151,7 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
             # collect training data for rl and il
             pre_action = offline_dst['pre_actions'][t]
             action_delta = offline_dst['action_deltas'][t]
-            state_delta = offline_dst['observations_delta'][t]
+            state_delta = offline_dst['observation_deltas'][t]
             next_state = cur_state + state_delta
             cur_action = pre_action + action_delta
 
@@ -203,7 +203,7 @@ def store_offlinerl_dataset(offline_dst, model_dir, rl_data_path, il_data_path, 
             
             # otherwise, prepare for the next time step
             t += 1
-            if offline_dst['shotnum'][t] != cur_shot:
+            if t >= len(offline_dst['shotnum']) or offline_dst['shotnum'][t] != cur_shot:
                 break
             
             # if not offline_dst['terminals'][t-1]:
