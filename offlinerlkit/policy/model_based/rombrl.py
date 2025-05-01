@@ -393,21 +393,21 @@ class ROMBRLPolicy(MOBILEPolicy):
         
         return masked_log_dyn_prob.reshape(batch_size, seq_len).permute(1, 0) # danger
 
-    def _get_sl_loss(self, sl_observations, sl_actions, sl_next_observations, sl_rewards):
-        sl_input = torch.cat([sl_observations, sl_actions], dim=-1)
-        sl_target = torch.cat([sl_next_observations-sl_observations, sl_rewards], dim=-1)
-        sl_input = self.dynamics.scaler.transform_tensor(sl_input)
+    # def _get_sl_loss(self, sl_observations, sl_actions, sl_next_observations, sl_rewards):
+    #     sl_input = torch.cat([sl_observations, sl_actions], dim=-1)
+    #     sl_target = torch.cat([sl_next_observations-sl_observations, sl_rewards], dim=-1)
+    #     sl_input = self.dynamics.scaler.transform_tensor(sl_input)
 
-        sl_mean, sl_logvar = self.dynamics.model(sl_input)
-        sl_inv_var = torch.exp(-sl_logvar)
-        sl_mse_loss_inv = (torch.pow(sl_mean - sl_target, 2) * sl_inv_var).mean(dim=(1, 2)) # TODO: using log likelihood
-        sl_var_loss = sl_logvar.mean(dim=(1, 2))
+    #     sl_mean, sl_logvar = self.dynamics.model(sl_input)
+    #     sl_inv_var = torch.exp(-sl_logvar)
+    #     sl_mse_loss_inv = (torch.pow(sl_mean - sl_target, 2) * sl_inv_var).mean(dim=(1, 2)) # TODO: using log likelihood
+    #     sl_var_loss = sl_logvar.mean(dim=(1, 2))
 
-        sl_loss = sl_mse_loss_inv.sum() + sl_var_loss.sum()
-        sl_loss = sl_loss + self.dynamics.model.get_decay_loss()
-        sl_loss = sl_loss + 0.001 * self.dynamics.model.max_logvar.sum() - 0.001 * self.dynamics.model.min_logvar.sum()
+    #     sl_loss = sl_mse_loss_inv.sum() + sl_var_loss.sum()
+    #     sl_loss = sl_loss + self.dynamics.model.get_decay_loss()
+    #     sl_loss = sl_loss + 0.001 * self.dynamics.model.max_logvar.sum() - 0.001 * self.dynamics.model.min_logvar.sum()
 
-        return sl_loss
+    #     return sl_loss
 
     def _get_grad_list(self, log_prob_list, model):
         # TODO: the time cost here can be improved, as a trade off of the memory cost
