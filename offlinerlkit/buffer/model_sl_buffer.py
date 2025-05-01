@@ -2,9 +2,8 @@ import numpy as np
 
 class ModelSLReplayBuffer:
     def __init__(self):
-        
         self._size = 0
-        
+
         self.net_input = None
         self.net_output = None
         self.mask = None
@@ -54,3 +53,4 @@ class ModelSLReplayBuffer:
             "net_output": self.net_output[batch_indexes],
             "mask": self.mask[batch_indexes]
         }
+

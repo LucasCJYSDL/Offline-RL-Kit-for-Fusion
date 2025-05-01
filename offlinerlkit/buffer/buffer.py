@@ -37,7 +37,11 @@ class ReplayBuffer:
         self.time_steps = None
         self.hidden_states = None
         self.net_input = None
+        self.time_terminals = None
+        self.batch_idx = None # used to query the tracking target at the current time step
+        self.next_batch_idx = None 
 
+    # may not be used
     def add(
         self,
         obs: np.ndarray,
@@ -55,7 +59,8 @@ class ReplayBuffer:
 
         self._ptr = (self._ptr + 1) % self._max_size
         self._size = min(self._size + 1, self._max_size)
-    
+
+    # fake buffer
     def add_batch(
         self,
         obss: np.ndarray,
@@ -67,7 +72,10 @@ class ReplayBuffer:
         full_actions: Optional[np.ndarray] = None,
         pre_actions: Optional[np.ndarray] = None,
         time_steps: Optional[np.ndarray] = None,
-        hidden_states: Optional[np.ndarray] = None
+        hidden_states: Optional[np.ndarray] = None,
+        time_terminals: Optional[np.ndarray] = None,
+        batch_idx: Optional[np.ndarray] = None,
+        next_batch_idx: Optional[np.ndarray] = None
     ) -> None:
         batch_size = len(obss)
         indexes = np.arange(self._ptr, self._ptr + batch_size) % self._max_size
@@ -85,11 +93,17 @@ class ReplayBuffer:
                 self.full_actions = np.zeros((self._max_size, full_actions.shape[-1]), dtype=full_actions.dtype)
                 self.pre_actions = np.zeros((self._max_size, pre_actions.shape[-1]), dtype=pre_actions.dtype)
                 self.time_steps = np.zeros((self._max_size, 1), dtype=np.float32)
+                self.time_terminals = np.zeros((self._max_size, 1), dtype=np.float32)
+                self.batch_idx = np.zeros((self._max_size, 1), dtype=np.int32)
+                self.next_batch_idx = np.zeros((self._max_size, 1), dtype=np.int32)
 
             self.full_observations[indexes] = full_obss.copy()
             self.full_actions[indexes] = full_actions.copy()
             self.pre_actions[indexes] = pre_actions.copy()
             self.time_steps[indexes] = time_steps.copy()
+            self.time_terminals[indexes] = time_terminals.copy()
+            self.batch_idx[indexes] = batch_idx.copy()
+            self.next_batch_idx[indexes] = next_batch_idx.copy()
         
         if hidden_states is not None:
             # initialize if necessary
@@ -101,6 +115,7 @@ class ReplayBuffer:
         self._ptr = (self._ptr + batch_size) % self._max_size
         self._size = min(self._size + batch_size, self._max_size)
     
+    # real buffer
     def load_dataset(self, dataset: Dict[str, np.ndarray], hidden=False) -> None:
         observations = np.array(dataset["observations"], dtype=self.obs_dtype)
         next_observations = np.array(dataset["next_observations"], dtype=self.obs_dtype)
@@ -125,7 +140,8 @@ class ReplayBuffer:
             if hidden:
                 self.hidden_states = np.array(dataset["hidden_states"], dtype=np.float32)
                 self.full_next_observations = np.array(dataset["full_next_observations"], dtype=self.obs_dtype)
-     
+    
+    # real buffer
     def normalize_obs(self, eps: float = 1e-3) -> Tuple[np.ndarray, np.ndarray]:
         mean = self.observations.mean(0, keepdims=True)
         std = self.observations.std(0, keepdims=True) + eps
@@ -134,6 +150,7 @@ class ReplayBuffer:
         obs_mean, obs_std = mean, std
         return obs_mean, obs_std
 
+    # real buffer and fake buffer
     def sample(self, batch_size: int) -> Dict[str, torch.Tensor]:
 
         batch_indexes = np.random.randint(0, self._size, size=batch_size)
@@ -151,6 +168,11 @@ class ReplayBuffer:
             ret["full_actions"] = torch.tensor(self.full_actions[batch_indexes]).to(self.device)
             ret["pre_actions"] = torch.tensor(self.pre_actions[batch_indexes]).to(self.device)
             ret["time_steps"] = torch.tensor(self.time_steps[batch_indexes]).to(self.device)
+
+        if self.time_terminals is not None:
+            ret["time_terminals"] = self.time_terminals[batch_indexes].astype(bool)
+            ret["batch_idx"] = self.batch_idx[batch_indexes].copy()
+            ret["next_batch_idx"] = self.next_batch_idx[batch_indexes].copy()
         
         if self.hidden_states is not None:
             # ret["hidden_states"] = torch.tensor(self.hidden_states[batch_indexes]).permute(1, 2, 0, 3).to(self.device)
@@ -158,6 +180,7 @@ class ReplayBuffer:
 
         return ret
 
+    # may not be used
     def sample_all(self) -> Dict[str, np.ndarray]:
         return {
             "observations": self.observations[:self._size].copy(),
@@ -167,6 +190,7 @@ class ReplayBuffer:
             "rewards": self.rewards[:self._size].copy()
         }
     
+    # real buffer
     def sample_rollouts(self, batch_size, rollout_length) -> Dict[str, np.ndarray]:
         batch_indexes = np.random.randint(0, self._size, size=batch_size)
         f_obs, f_act, pre_act, time_step, terminal = [], [], [], [], []
@@ -193,11 +217,12 @@ class ReplayBuffer:
             "time_steps": np.moveaxis(np.array(time_step)[:-1], source=0, destination=1),
             "terminals": np.moveaxis(np.array(terminal, dtype=bool), source=0, destination=1),
             "hidden_states": np.moveaxis(self.hidden_states[batch_indexes], source=0, destination=2),
-            "batch_idx_list": batch_idx_list
+            "batch_idx_list": np.array(batch_idx_list)
         }   
         
         return ret
 
+    # real buffer
     def update_hidden_states(self, model, net_input, len_list):
         s_id = 0
         interval = 20

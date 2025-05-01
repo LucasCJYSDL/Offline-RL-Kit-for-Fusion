@@ -2,6 +2,7 @@ import os
 import numpy as np
 import torch
 import torch.nn as nn
+from scipy.stats import norm
 
 from typing import Tuple, Dict
 
@@ -52,6 +53,13 @@ class EnsembleDynamics:
         info["next_full_observations"] = samples.copy()
         time_steps = time_steps + 1
         info["next_time_steps"] = time_steps.copy()
+
+        # new for robust training
+        info['dyn_net_input'] = net_input
+        log_dyn_probs = norm.logpdf(ensemble_samples, mean, std)
+        info['log_dyn_probs'] = log_dyn_probs[model_idxs, np.arange(batch_size)].sum(axis=-1)
+        info['model_idxs'] = model_idxs
+        info['dyn_samples'] = samples.copy() - cur_state
 
         # get the reward
         next_obs = samples[:, state_idxs]

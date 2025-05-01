@@ -20,7 +20,7 @@ def get_args():
     # basic settings
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
     parser.add_argument("--cuda_id", type=int, default=1, help="CUDA device ID")
-    parser.add_argument("--print_actuators", type=bool, default=True, help="Whether to print actuators")
+    parser.add_argument("--plot_actuators", type=bool, default=True, help="Whether to plot actuators")
 
     # env settings
     parser.add_argument("--env", type=str, default="profile_control") 
@@ -93,7 +93,8 @@ def run(args=get_args()) -> None:
         
         # make plots
         plot_tracking_quantities(time_array, target_quan_array, real_quan_array, cur_quan_array, quan_names, shot, log_folder)
-        plot_actions(time_array, real_act_array, cur_act_array, act_names, shot, log_folder)
+        if args.plot_actuators:
+            plot_actions(time_array, real_act_array, cur_act_array, act_names, shot, log_folder)
 
         # summary
         print("Shot #{} with return {} and length {}".format(shot, episode_reward, episode_length))

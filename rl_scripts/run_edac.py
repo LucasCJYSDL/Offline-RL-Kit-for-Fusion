@@ -34,7 +34,7 @@ def get_args():
     parser.add_argument("--eta", type=float, default=1.0)
     parser.add_argument("--normalize-reward", type=bool, default=False)
 
-    parser.add_argument("--epoch", type=int, default=3000)
+    parser.add_argument("--epoch", type=int, default=1000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=256)

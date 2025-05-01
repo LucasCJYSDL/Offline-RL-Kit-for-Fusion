@@ -29,7 +29,7 @@
     ```bash
     python rl_scripts/run_XXX.py
     ```
-    - XXX can be one of [cql, iql, edac, mcq, td3bc, combo, mobile, mopo, bambrl, rambo], where the first five algorithms are model-free and the rest are model-based.
+    - XXX can be one of [cql, iql, edac, mcq, td3bc, combo, mobile, mopo, bambrl, rambo, rombrl], where the first five algorithms are model-free and the rest are model-based.
 
 - You can run a goal-conditioned imitation learning algorithm by:
     ```bash
@@ -43,3 +43,14 @@
     - YYY can be one of [mppi], to be extended.
 
 - Please find more instructions on how to run/extend the codebase in this [tutorial](https://drive.google.com/file/d/1PVcsTshC1FaqZ9pweT0eW_SvUdu-ZaWu/view?usp=sharing).
+
+## Evaluations
+
+- Plots of episodic returns during the policy learning process, along with trained policy model checkpoints, will be generated and saved in the 'logs' folder.
+
+- Dynamics training results will be generated and saved in the 'outputs' folder.
+
+- We also provide scripts in the 'visualization' folder to visualize actuator choices made by a trained policy and its performance on plasma control tasks, such as profile tracking. Please configure the settings in 'visualization/profile_tracking.py', then run:
+    ```bash
+    python visualization/profile_tracking.py
+    ```

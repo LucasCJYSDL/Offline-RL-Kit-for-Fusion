@@ -50,7 +50,7 @@ def get_args():
     parser.add_argument("--model-retain-epochs", type=int, default=5)
     parser.add_argument("--real-ratio", type=float, default=0.05)
 
-    parser.add_argument("--epoch", type=int, default=3000)
+    parser.add_argument("--epoch", type=int, default=1000)
     parser.add_argument("--step-per-epoch", type=int, default=1000)
     parser.add_argument("--eval_episodes", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=256)
@@ -59,7 +59,7 @@ def get_args():
     parser.add_argument("--env", type=str, default="profile_control") # one of [base, profile_control]
     parser.add_argument("--task", type=str, default="dens") # betan_EFIT01
     parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--cuda_id", type=int, default=3)
+    parser.add_argument("--cuda_id", type=int, default=2)
 
     return parser.parse_args()
 

@@ -143,6 +143,11 @@ class MOBILEPolicy(BasePolicy):
             rollout_transitions["pre_actions"].append(pre_actions[idx_list])
             rollout_transitions["time_steps"].append(time_steps[idx_list])
 
+            # new for rombrl
+            rollout_transitions["time_terminals"].append(time_terminals[idx_list])
+            rollout_transitions["batch_idx"].append(init_samples["batch_idx_list"][t][:, np.newaxis][idx_list]) # used to query the tracking targets
+            rollout_transitions["next_batch_idx"].append(init_samples["batch_idx_list"][t+1][:, np.newaxis][idx_list])
+
             num_transitions += len(idx_list)
             rewards_arr = np.append(rewards_arr, rewards[idx_list].flatten())
 

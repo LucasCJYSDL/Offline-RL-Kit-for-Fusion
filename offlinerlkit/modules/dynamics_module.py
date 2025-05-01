@@ -78,6 +78,27 @@ class EnsembleDynamicsModel(nn.Module):
             sl_loss += memb.loss(net_out, (memb_x, memb_y, mask.clone()))[0]
 
         return sl_loss / float(self.num_ensemble)
+    
+    def get_net_out(self, x, mask):
+        if not isinstance(x, torch.Tensor):
+            x = torch.tensor(x, device=self.device)
+
+        means, stds = [], []
+        for memb in self.all_models:
+            memb_x = memb.normalizer.normalize(x, 0)
+            net_out = memb.get_net_out((memb_x, )) # the function is for sequence data but assumes the initial hidden state is all zero.
+            mean = net_out['mean']
+            std = torch.sqrt(torch.exp(net_out['logvar']))
+            # unnormalize
+            mean = memb.normalizer.unnormalize(mean, 1)
+            std = getattr(memb.normalizer, f'{1}_scaling') * std
+            # mask out
+            mean = mean.reshape(-1, mean.shape[-1])[mask>0]
+            std = std.reshape(-1, std.shape[-1])[mask>0]
+            means.append(mean)
+            stds.append(std)
+
+        return torch.stack(means), torch.stack(stds)
 
     def random_member_idxs(self, batch_size: int) -> np.ndarray:
         idxs = np.random.choice(self.member_list, size=batch_size)
