@@ -2,9 +2,13 @@
 
 ## Requirements
 
-- Please refer to [OfflineRL-Kit](https://github.com/yihaosun1124/OfflineRL-Kit) for environment configuration. Notably, we don't require MuJoCo or D4RL.
+- You need to download/clone the repo: [dynamics-toolbox](https://github.com/LucasCJYSDL/dynamics-toolbox). This toolbox is different from Ian's, as we have changed the rpnn class.
 
-- You would also need [dynamics-toolbox](https://github.com/LucasCJYSDL/dynamics-toolbox). This toolbox is different from Ian's, as we have changed the rpnn class.
+- Make a virtual environment with python=3.9, then enter the repo above and run:
+    ```bash
+    pip install -r requirements.txt
+    pip install -e .    
+    ```
 
 ## Dynamics Modelling
 
