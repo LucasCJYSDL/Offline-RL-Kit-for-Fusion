@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from typing import Dict, Optional, List
+from scipy.stats import t
 
 from dynamics_toolbox.utils.storage.model_storage import load_ensemble_from_parent_dir
 
@@ -62,3 +63,50 @@ def get_EYX(test_shots, model_dir, ensemble_mode=False):
         EYX = EYX[:, test_mask > 0]
 
     return EYX
+
+
+def get_t_confidence_interval(ensemble_EYX, alpha):
+    ensemble_size = ensemble_EYX.shape[0]
+    assert ensemble_size > 1
+
+    t_mean = ensemble_EYX.mean(axis=0)
+    t_std = np.sqrt(np.square(ensemble_EYX - t_mean).sum(axis=0) / float(ensemble_size - 1))
+    q_two_sided = t.ppf(1 - alpha / 2, ensemble_size - 1)
+
+    t_range = t_std / np.sqrt(ensemble_size) * q_two_sided
+    return t_mean - t_range, t_mean + t_range
+
+
+def _P_B(B,D):
+    #Returns the upper bound on the miscoverage probablility 
+    # (equation 3 from HulC paper 9/23)
+    #B = number of batches
+    #D = delta; the median bias
+    return((0.5-D)**B + (0.5 + D)**B)
+
+
+def _min_B(alpha_level, D):
+    # Returns the smallest integer B>=1 such that P_B(B, D) <= alpha_level, 
+    # according to Algorithm 1 (HulC paper 9/23)
+    #D = delta; the median bias
+    B = 1
+    while True:
+        p = _P_B(B,D)
+        if p <= alpha_level:
+            break
+        B += 1
+    return B
+
+
+def get_B_star(alpha_level, D):
+    # Finds the batch size "B*" according to equation 4 (HulC paper 9/23)
+    #D = delta; the median bias
+    B = _min_B(alpha_level, D)
+    U = np.random.uniform(0, 1)
+    numer = alpha_level - _P_B(B, D)
+    denom = _P_B(B-1, D) - _P_B(B,D)
+    tau = numer / denom
+    if U <= tau: 
+        return B-1
+    return B
+

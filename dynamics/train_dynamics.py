@@ -8,23 +8,26 @@ warnings.filterwarnings("ignore")
 import ray, time
 import hydra, pickle
 import numpy as np
-from dynamics.utils import get_EYX
+from dynamics.utils import get_EYX, get_t_confidence_interval, get_B_star
 from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning.utilities.seed import seed_everything
 from dynamics_toolbox.utils.lightning.constructors import construct_all_pl_components_for_training
 
 
 @ray.remote(num_gpus=1/6)  # Request 1/6 of a GPU
-def train_single_model(cfg: DictConfig, ensemble_id: int, exp_id: int):
-    save_dir = os.path.join(os.getcwd(), "exp_{}".format(exp_id))
+def train_single_model(cfg: DictConfig, ensemble_id: int, exp_id: int, B_star: int, num_models_so_far: int):
+    save_dir = os.path.join(os.getcwd(), "exp_{}".format(exp_id)) # DANGER: could take a lot of disk space.
     # Clone the config for this ensemble member
     cfg = OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
     with open_dict(cfg):
         # Update seed & save directory for uniqueness
-        cfg["seed"] = cfg["seed"] + cfg.get("ensemble_size") * exp_id + ensemble_id
-        cfg["data_module"]["seed"] = cfg["seed"]
-        cfg["data_module"]["save_dir"] = os.path.join(save_dir, str(cfg["seed"]))
-        cfg["save_dir"] = os.path.join(save_dir, str(cfg["seed"]), "model")
+        cfg["data_module"]["B_star"] = B_star # hulc
+        cfg["data_module"]["ensemble_id"] = ensemble_id # hulc
+        cfg["data_module"]["seed"] = cfg["seed"] + num_models_so_far # all ensemble members share the same seed for the data module?
+        cfg["seed"] = cfg["seed"] + num_models_so_far + ensemble_id
+        # cfg["data_module"]["seed"] = cfg["seed"] # TODO
+        cfg["data_module"]["save_dir"] = os.path.join(save_dir, str(cfg["seed"])) # save_dir for data
+        cfg["save_dir"] = os.path.join(save_dir, str(cfg["seed"]), "model") # save_dir for model
 
     # you should either comment the following line or assign random seeds (i.e., cfg["seed"]) based on the exp_id
     # to ensure that the training result of each exp is different
@@ -84,19 +87,27 @@ def train_ensemble(cfg: DictConfig) -> None:
     ray_env_var = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     start_time = time.time()
     within_bounds = 0.0
+    num_models_so_far = 0
+    np.random.seed(cfg.get("seed"))
     for outer_iter in range(outer_loop_size):
+        if cfg.get("is_hulc"):
+            B_star = get_B_star(cfg.get("alpha"), cfg.get("hulc_bias")) # there is randomness here, so we also need to set random seed in this function
+            num_models = B_star
+        else:
+            B_star = -1 
         # sequential version
         # results = [] 
         # for i in range(num_models):
         #     print(f"\n=== Training model {i + 1}/{num_models} ===")
-        #     result = train_single_model(cfg, ensemble_id=i)
+        #     result = train_single_model(cfg, i, outer_iter, B_star, num_models_so_far)
         #     results.append(result)
         # parallel version
         ray.init(runtime_env={"env_vars": {"PYTHONPATH": ray_env_var}}, log_to_driver=False)
-        results = ray.get([train_single_model.remote(cfg, i, outer_iter) for i in range(num_models)])
+        results = ray.get([train_single_model.remote(cfg, i, outer_iter, B_star, num_models_so_far) for i in range(num_models)])
         ray.shutdown() # TODO: remove this and put ray.init outside to improve speed?
 
         # collect/analyze training results
+        num_models_so_far += num_models
         metrics = []
         for i in range(num_models):
             metrics.append(results[i][0])
@@ -109,8 +120,16 @@ def train_ensemble(cfg: DictConfig) -> None:
         # get ensemble predictions on the test dataset
         ensemble_EYX = get_EYX(test_shots, learned_ensemble_dir, ensemble_mode=True)
         # check if gt_EYX falls within the 95% quantile interval
-        lower_bound = np.percentile(ensemble_EYX, 2.5, axis=0) 
-        upper_bound = np.percentile(ensemble_EYX, 97.5, axis=0)  
+        if not cfg.get("is_cheap"):
+            if not cfg.get("is_hulc"):
+                percentage = cfg.get("alpha") * 100.0
+                lower_bound = np.percentile(ensemble_EYX, percentage / 2.0, axis=0) 
+                upper_bound = np.percentile(ensemble_EYX, 100.0 - percentage / 2.0, axis=0)  
+            else:
+                lower_bound = np.min(ensemble_EYX, axis=0)
+                upper_bound = np.max(ensemble_EYX, axis=0)
+        else:
+            lower_bound, upper_bound = get_t_confidence_interval(ensemble_EYX, cfg.get("alpha"))
         within_bounds += ((gt_EYX >= lower_bound) & (gt_EYX <= upper_bound)).astype(float)  # Shape: (batch_size, datapoint_dim)
 
         print("=== Ensemble Training at Iteration {} Complete ===".format(outer_iter))

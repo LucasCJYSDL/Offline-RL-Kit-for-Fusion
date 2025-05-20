@@ -92,11 +92,11 @@ def synthesize_rollouts(offline_dst, raw_data_dir, model_dir, data_dir, device):
 
 if __name__ == "__main__":
     #!!! what you need to specify 
-    raw_data_dir = "/home/scratch/jiayuc2/fusion_data/noshape_ech" # the raw data
-    model_dir = "/home/scratch/jiayuc2/fusion_model/rpnn_noshape_ech" # the rpnn dynamics model to synthesize data
+    raw_data_dir = "/zfsauton/project/fusion/data/organized/noshape_ech" # the raw data
+    model_dir = "/zfsauton/project/fusion/models/rpnn_noshape_ech" # the rpnn dynamics model to synthesize data
     action_bound_file = "noshape_ech.yaml" # actuator bounds, which you probably don't need to change
     reference_shot = 189268 
-    shot_list = list(range(reference_shot - 50, reference_shot + 50)) # list of shots for training dynamics
+    shot_list = list(range(reference_shot - 500, reference_shot + 500)) # list of shots for training dynamics
     warmup_steps = 5 # we won't involve the first () steps of each shot in the training dataset
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

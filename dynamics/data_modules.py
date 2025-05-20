@@ -35,6 +35,8 @@ class KFoldSequenceFusionDataModule(LightningDataModule):
             pin_memory: bool = True,
             seed: int = 1,
             bootstrapped: bool = True,
+            B_star: int = -1, # hulc
+            ensemble_id: int = -1, # hulc
             train_from_start_only: bool = True
     ):
         """Constructor.
@@ -72,6 +74,8 @@ class KFoldSequenceFusionDataModule(LightningDataModule):
         self._num_workers = num_workers
         self._pin_memory = pin_memory
         self._bootstrapped = bootstrapped
+        self._B_star = B_star
+        self._ensemble_id = ensemble_id
 
         # not used for now
         # with open(os.path.join(data_path, 'info.pkl'), 'rb') as f:
@@ -92,11 +96,12 @@ class KFoldSequenceFusionDataModule(LightningDataModule):
         # get the raw/shot datasets
         data = load_from_hdf5(os.path.join(data_path, file_name))
         shot_data = get_shots(data, min_amt_needed=self.min_shot_amt)
-        self.te_shot_nums = self._get_test_shots(data, n_folds, te_fold) # The test shots for each ensemble member are the same.
+        self.te_shot_nums = self._get_test_shots(data, n_folds, te_fold) # The test shots for each ensemble member in each experiment are the same.
 
         # TODO: use a better design for bootstrapping sequential data
         # We only bootstrap the training data.
         if self._bootstrapped: 
+            assert B_star < 0, "hulc is not a valid choice when using bootstrapping"
             # split the shot data
             test_shot_data, other_shot_data = [], []
             for shot in shot_data:
@@ -118,7 +123,7 @@ class KFoldSequenceFusionDataModule(LightningDataModule):
 
         # get the training/validation shots
         self.tr_shot_nums, self.val_shot_nums = self._separate_shot_nums(shot_data, prop_validation) 
-        
+
         self.tr_set, self.val_set, self.te_set = self._assemble_datasets(
             shot_data, [self.tr_shot_nums, self.val_shot_nums, self.te_shot_nums]
         )
@@ -226,6 +231,18 @@ class KFoldSequenceFusionDataModule(LightningDataModule):
             if shot["shotnum"][0] not in self.te_shot_nums:
                 remaining_shots.append(shot["shotnum"][0])
         remaining_shots = np.array(list(set(remaining_shots)))
+
+        # hulc 
+        if self._B_star >= 1:
+            # TODO: is shuffle necessary?
+            # DANGER: if using shuffle, then, in train_dynamics.py, all ensemble members should share the same random seed for their data modules.
+            indices_shuffled = np.arange(len(remaining_shots))
+            np.random.shuffle(indices_shuffled)
+            remaining_shots = remaining_shots[indices_shuffled]
+            slice_length = len(remaining_shots) // self._B_star
+            remaining_shots = remaining_shots[self._ensemble_id*slice_length : (self._ensemble_id+1)*slice_length]
+        # the end of hulc 
+
         num_val = int(prop_validation * len(remaining_shots))
 
         if num_val <= 0:
