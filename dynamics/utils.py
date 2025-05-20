@@ -72,8 +72,13 @@ def get_t_confidence_interval(ensemble_EYX, alpha):
     t_mean = ensemble_EYX.mean(axis=0)
     t_std = np.sqrt(np.square(ensemble_EYX - t_mean).sum(axis=0) / float(ensemble_size - 1))
     q_two_sided = t.ppf(1 - alpha / 2, ensemble_size - 1)
-
     t_range = t_std / np.sqrt(ensemble_size) * q_two_sided
+
+    # TODO: alternative of the cheap bootstrap
+    # t_std = np.sqrt(np.square(ensemble_EYX - t_mean).sum(axis=0) / float(ensemble_size))
+    # q_two_sided = t.ppf(1 - alpha / 2, ensemble_size)
+    # t_range = t_std * q_two_sided
+
     return t_mean - t_range, t_mean + t_range
 
 
